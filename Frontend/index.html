@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AskYourDocs — Document Intelligence</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a href="/" class="logo">Ask<span>Your</span>Docs</a>
+    <nav class="nav-links">
+      <a href="/" class="nav-btn active">📄 Documents</a>
+      <a href="/chat-page" class="nav-btn primary">💬 Chat</a>
+    </nav>
+  </div>
+</header>
+
+<div class="container">
+  <div class="hero">
+    <h1>Turn your docs into<br/><em>instant answers</em></h1>
+    <p>Upload PDFs, ask questions in plain English. AskYourDocs retrieves exactly what you need and cites the source.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong id="stat-docs">0</strong> docs loaded</div>
+      <div class="hero-stat"><strong id="stat-pages">0</strong> total pages</div>
+      <div class="hero-stat"><strong id="stat-chunks">0</strong> indexed chunks</div>
+    </div>
+  </div>
+
+  <div class="index-grid">
+    <!-- Upload Panel -->
+    <div class="panel">
+      <div class="panel-title">⬆ Upload Documents</div>
+
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".pdf" multiple />
+        <span class="upload-icon">📎</span>
+        <h3>Drop PDFs here or click to browse</h3>
+        <p>Supports multiple files · PDF only · Any size</p>
+      </div>
+
+      <div class="upload-progress" id="uploadProgress">
+        <div style="font-size:0.78rem; color:var(--muted);" id="uploadStatus">Processing...</div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      </div>
+    </div>
+
+    <!-- Documents Panel -->
+    <div class="panel">
+      <div class="panel-title">📚 Your Documents
+        <span style="margin-left:auto; font-size:0.72rem; font-weight:400; color:var(--muted);">Persisted until removed</span>
+      </div>
+      <div id="docList">
+        <div class="empty-state"><span>📭</span>No documents yet. Upload PDFs to get started.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/static/app.js"></script>
+<script>
+  // Index page logic
+  const fileInput = document.getElementById('fileInput');
+  const uploadZone = document.getElementById('uploadZone');
+
+  // Drag & Drop
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    handleFiles([...e.dataTransfer.files]);
+  });
+  fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
+
+  async function handleFiles(files) {
+    const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (!pdfs.length) { showToast('Only PDF files are supported.', 'error'); return; }
+
+    const progressEl = document.getElementById('uploadProgress');
+    const statusEl = document.getElementById('uploadStatus');
+    const progressBar = document.getElementById('progressBar');
+
+    progressEl.style.display = 'block';
+
+    for (let i = 0; i < pdfs.length; i++) {
+      const file = pdfs[i];
+      const pct = Math.round(((i) / pdfs.length) * 100);
+      progressBar.style.width = pct + '%';
+      statusEl.textContent = `Uploading ${file.name} (${i+1}/${pdfs.length})...`;
+
+      const fd = new FormData();
+      fd.append('file', file);
+
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        showToast(`✓ ${file.name} — ${data.chunk_count} chunks indexed`, 'success');
+      } catch (err) {
+        showToast(`✗ ${file.name}: ${err.message}`, 'error');
+      }
+    }
+
+    progressBar.style.width = '100%';
+    statusEl.textContent = 'Done!';
+    setTimeout(() => { progressEl.style.display = 'none'; progressBar.style.width = '0%'; }, 1500);
+    fileInput.value = '';
+    await refreshDocs();
+  }
+
+  async function refreshDocs() {
+    const docs = await fetchDocs();
+    renderDocList(docs);
+    updateStats(docs);
+  }
+
+  function updateStats(docs) {
+    document.getElementById('stat-docs').textContent = docs.length;
+    document.getElementById('stat-pages').textContent = docs.reduce((a, d) => a + (d.page_count || 0), 0);
+    document.getElementById('stat-chunks').textContent = docs.reduce((a, d) => a + (d.chunk_count || 0), 0);
+  }
+
+  function renderDocList(docs) {
+    const container = document.getElementById('docList');
+    if (!docs.length) {
+      container.innerHTML = '<div class="empty-state"><span>📭</span>No documents yet. Upload PDFs to get started.</div>';
+      return;
+    }
+    container.innerHTML = '<div class="doc-list">' + docs.map(doc => `
+      <div class="doc-card" data-id="${doc.doc_id}">
+        <div class="doc-icon">PDF</div>
+        <div class="doc-info">
+          <div class="doc-name">${escHtml(doc.name)}</div>
+          <div class="doc-meta">${doc.page_count} pages · ${doc.chunk_count} chunks</div>
+        </div>
+        <div class="doc-actions">
+          <button class="doc-action-btn" title="Download PDF" onclick="downloadDoc('${doc.doc_id}', 'pdf')">⬇</button>
+          <button class="doc-action-btn" title="Download Text" onclick="downloadDoc('${doc.doc_id}', 'txt')">📝</button>
+          <button class="doc-action-btn delete" title="Remove" onclick="removeDoc('${doc.doc_id}')">✕</button>
+        </div>
+      </div>
+    `).join('') + '</div>';
+  }
+
+  async function removeDoc(docId) {
+    if (!confirm('Remove this document permanently?')) return;
+    try {
+      const res = await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Remove failed');
+      showToast('Document removed.', 'success');
+      await refreshDocs();
+    } catch (e) { showToast(e.message, 'error'); }
+  }
+
+  function downloadDoc(docId, type) {
+    if (type === 'pdf') window.open(`/api/documents/${docId}/download`, '_blank');
+    else window.open(`/api/documents/${docId}/text?format=txt`, '_blank');
+  }
+
+  // Init
+  refreshDocs();
+</script>
+</body>
+</html>

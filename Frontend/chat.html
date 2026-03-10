@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AskYourDocs — Chat</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a href="/" class="logo">Ask<span>Your</span>Docs</a>
+    <nav class="nav-links">
+      <a href="/" class="nav-btn">📄 Documents</a>
+      <a href="/chat-page" class="nav-btn active primary">💬 Chat</a>
+    </nav>
+  </div>
+</header>
+
+<div class="chat-layout">
+  <!-- Sidebar: doc selection -->
+  <aside class="chat-sidebar">
+    <div class="sidebar-header">
+      <h2>Context Documents</h2>
+      <div class="context-count" id="contextCount">0 selected</div>
+    </div>
+    <div class="sidebar-docs" id="sidebarDocs">
+      <div class="empty-state" style="padding:20px 8px;">
+        <span>📭</span>No documents.<br/><a href="/" style="color:var(--accent2);">Upload some</a>
+      </div>
+    </div>
+    <div class="sidebar-actions">
+      <button class="btn" onclick="selectAllDocs()">All</button>
+      <button class="btn" onclick="clearAllDocs()">None</button>
+      <button class="btn" onclick="clearChat()">Clear chat</button>
+    </div>
+  </aside>
+
+  <!-- Main chat -->
+  <main class="chat-main">
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-welcome" id="chatWelcome">
+        <h2>Ask your documents</h2>
+        <p>Select documents from the sidebar and ask anything. I'll find the relevant passages and answer with citations.</p>
+        <div class="sample-questions">
+          <button class="sample-q" onclick="useQuestion(this)">Summarize the key findings</button>
+          <button class="sample-q" onclick="useQuestion(this)">What are the main conclusions?</button>
+          <button class="sample-q" onclick="useQuestion(this)">List all recommendations</button>
+          <button class="sample-q" onclick="useQuestion(this)">What methodology was used?</button>
+          <button class="sample-q" onclick="useQuestion(this)">Compare the different sections</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <div id="noDocsBanner" class="no-docs-banner" style="display:none;">
+        ⚠ No documents selected. Pick documents from the sidebar to start chatting.
+      </div>
+      <div class="input-wrap">
+        <textarea
+          id="chatInput"
+          class="chat-textarea"
+          placeholder="Ask a question about your documents..."
+          rows="1"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for newline · Answers cite sources automatically</div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/static/app.js"></script>
+<script>
+  let chatHistory = [];
+  let selectedDocIds = new Set();
+  let allDocs = [];
+
+  // ── Init ──
+  async function init() {
+    allDocs = await fetchDocs();
+    renderSidebar(allDocs);
+    // Auto-select all docs on load
+    allDocs.forEach(d => selectedDocIds.add(d.doc_id));
+    renderSidebar(allDocs);
+  }
+
+  function renderSidebar(docs) {
+    const container = document.getElementById('sidebarDocs');
+    if (!docs.length) {
+      container.innerHTML = '<div class="empty-state" style="padding:20px 8px;"><span>📭</span>No documents.<br/><a href="/" style="color:var(--accent2);">Upload some</a></div>';
+      updateContextCount();
+      return;
+    }
+    container.innerHTML = docs.map(doc => {
+      const sel = selectedDocIds.has(doc.doc_id);
+      return `
+        <div class="sidebar-doc-item ${sel ? 'selected' : ''}" onclick="toggleDoc('${doc.doc_id}')" data-id="${doc.doc_id}">
+          <div class="sidebar-checkbox ${sel ? 'checked' : ''}">${sel ? '✓' : ''}</div>
+          <div class="sidebar-doc-name">${escHtml(doc.name)}</div>
+          <div class="sidebar-doc-pages">${doc.page_count}p</div>
+        </div>
+      `;
+    }).join('');
+    updateContextCount();
+  }
+
+  function toggleDoc(docId) {
+    if (selectedDocIds.has(docId)) selectedDocIds.delete(docId);
+    else selectedDocIds.add(docId);
+    renderSidebar(allDocs);
+    checkNoDocs();
+  }
+
+  function selectAllDocs() { allDocs.forEach(d => selectedDocIds.add(d.doc_id)); renderSidebar(allDocs); checkNoDocs(); }
+  function clearAllDocs() { selectedDocIds.clear(); renderSidebar(allDocs); checkNoDocs(); }
+
+  function updateContextCount() {
+    document.getElementById('contextCount').textContent = `${selectedDocIds.size} selected`;
+  }
+
+  function checkNoDocs() {
+    document.getElementById('noDocsBanner').style.display = selectedDocIds.size === 0 ? 'flex' : 'none';
+  }
+
+  // ── Chat ──
+  function useQuestion(btn) {
+    const q = btn.textContent;
+    document.getElementById('chatInput').value = q;
+    document.getElementById('chatInput').focus();
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const query = input.value.trim();
+    if (!query) return;
+    if (selectedDocIds.size === 0) { showToast('Select at least one document first.', 'error'); return; }
+
+    // Hide welcome
+    const welcome = document.getElementById('chatWelcome');
+    if (welcome) welcome.style.display = 'none';
+
+    // Add user message
+    appendMessage('user', query);
+    input.value = '';
+    autoResize(input);
+    chatHistory.push({ role: 'user', content: query });
+
+    // Show typing
+    const typingId = showTyping();
+    document.getElementById('sendBtn').disabled = true;
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          doc_ids: [...selectedDocIds],
+          chat_history: chatHistory.slice(-10),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Chat failed');
+
+      removeTyping(typingId);
+      appendMessage('assistant', data.answer, data.sources);
+      chatHistory.push({ role: 'assistant', content: data.answer });
+
+    } catch (err) {
+      removeTyping(typingId);
+      appendMessage('assistant', `⚠ Error: ${err.message}`);
+    }
+
+    document.getElementById('sendBtn').disabled = false;
+  }
+
+  function appendMessage(role, text, sources) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    const avatar = role === 'user' ? 'YOU' : 'AI';
+    const formattedText = formatMarkdown(text);
+
+    let sourcesHtml = '';
+    if (sources && sources.length) {
+      const unique = [];
+      const seen = new Set();
+      sources.forEach(s => {
+        const key = `${s.doc_name}-${s.page}`;
+        if (!seen.has(key)) { seen.add(key); unique.push(s); }
+      });
+      sourcesHtml = `<div class="msg-sources">${
+        unique.map(s => `<span class="source-chip">📄 ${escHtml(s.doc_name)} p.${s.page}</span>`).join('')
+      }</div>`;
+    }
+
+    div.innerHTML = `
+      <div class="msg-avatar">${avatar}</div>
+      <div class="msg-body">
+        <div class="msg-bubble">${formattedText}${sourcesHtml}</div>
+      </div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function showTyping() {
+    const id = 'typing-' + Date.now();
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'message assistant';
+    div.id = id;
+    div.innerHTML = `
+      <div class="msg-avatar">AI</div>
+      <div class="msg-body">
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return id;
+  }
+
+  function removeTyping(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  function clearChat() {
+    chatHistory = [];
+    const container = document.getElementById('chatMessages');
+    container.innerHTML = '';
+    const welcome = document.createElement('div');
+    welcome.id = 'chatWelcome';
+    welcome.className = 'chat-welcome';
+    welcome.innerHTML = `
+      <h2>Ask your documents</h2>
+      <p>Select documents from the sidebar and ask anything.</p>
+    `;
+    container.appendChild(welcome);
+  }
+
+  // ── Textarea auto-resize ──
+  const textarea = document.getElementById('chatInput');
+  textarea.addEventListener('input', () => autoResize(textarea));
+  textarea.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  }
+
+  init();
+</script>
+</body>
+</html>
