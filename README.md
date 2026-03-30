@@ -64,23 +64,33 @@ Ask questions across one or multiple documents. Answers include source chips sho
 
 ```
 AskYourDocs/
-├── Backend/
-│   ├── main.py           # FastAPI app, all API routes
-│   ├── config.py         # Env vars, paths, model settings
-│   └── rag/
-│       ├── ingest.py     # PDF parsing, chunking, indexing
-│       └── pipeline.py   # Retrieval + Groq LLM call
+│
+├── backend/
+│   ├── main.py              # FastAPI app, all routes
+│   ├── config.py            # Settings & constants
+│   ├── rag/
+│   │   ├── __init__.py
+│   │   ├── ingest.py        # PDF → chunks → TF-IDF index
+│   │   ├── retrieve.py      # BM25/cosine similarity search
+│   │   ├── llm.py           # Anthropic Claude API calls
+│   │   └── pipeline.py      # Orchestrates ingest+retrieve+llm
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── pdf_loader.py    # PyMuPDF text extraction
+│   │   └── text_splitter.py # Chunk text with overlap
+│   ├── storage/
+│   │   ├── docs/            # Original PDFs
+│   │   ├── indexes/         # Pickled TF-IDF indexes per doc
+│   │   └── texts/           # Extracted text chunks (JSON)
+│   └── requirements.txt
+│
 ├── frontend/
-│   ├── index.html        # Documents page
-│   ├── chat.html         # Chat page
-│   ├── app.js            # Shared JS utilities
-│   └── style.css         # All styles
-├── storage/
-│   ├── docs/             # Uploaded PDFs + registry
-│   ├── indexes/          # Chunk indexes per document
-│   └── texts/            # Extracted text JSON per document
-├── requirements.txt
-└── .env
+│   ├── index.html           # Upload + document manager
+│   ├── chat.html            # Chat interface
+│   ├── app.js               # Shared JS logic
+│   └── style.css            # Global styles
+│
+└── README.md
 ```
 
 ---
