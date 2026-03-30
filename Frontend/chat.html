@@ -10,39 +10,44 @@
 
 <header class="site-header">
   <div class="inner">
-    <a href="/" class="logo">Ask<span>Your</span>Docs</a>
+    <a href="/" class="logo">
+      <div class="logo-icon">📄</div>
+      AskYourDocs <span>/ chat</span>
+    </a>
     <nav class="nav-links">
-      <a href="/" class="nav-btn">📄 Documents</a>
-      <a href="/chat-page" class="nav-btn active primary">💬 Chat</a>
+      <a href="/" class="nav-btn">Documents</a>
+      <a href="/chat-page" class="nav-btn active primary">Chat</a>
     </nav>
   </div>
 </header>
 
 <div class="chat-layout">
-  <!-- Sidebar: doc selection -->
+  <!-- Sidebar -->
   <aside class="chat-sidebar">
     <div class="sidebar-header">
-      <h2>Context Documents</h2>
+      <h2>Context</h2>
       <div class="context-count" id="contextCount">0 selected</div>
     </div>
     <div class="sidebar-docs" id="sidebarDocs">
-      <div class="empty-state" style="padding:20px 8px;">
-        <span>📭</span>No documents.<br/><a href="/" style="color:var(--accent2);">Upload some</a>
+      <div class="empty-state" style="padding:24px 12px;">
+        <div class="empty-state-icon">📭</div>
+        <p>No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none;">Upload some →</a></p>
       </div>
     </div>
     <div class="sidebar-actions">
       <button class="btn" onclick="selectAllDocs()">All</button>
       <button class="btn" onclick="clearAllDocs()">None</button>
-      <button class="btn" onclick="clearChat()">Clear chat</button>
+      <button class="btn" onclick="clearChat()">Clear</button>
     </div>
   </aside>
 
-  <!-- Main chat -->
+  <!-- Chat main -->
   <main class="chat-main">
     <div class="chat-messages" id="chatMessages">
       <div class="chat-welcome" id="chatWelcome">
+        <div class="welcome-icon">✦</div>
         <h2>Ask your documents</h2>
-        <p>Select documents from the sidebar and ask anything. I'll find the relevant passages and answer with citations.</p>
+        <p>Select documents from the sidebar, then ask anything. I'll find the relevant passages and answer with citations.</p>
         <div class="sample-questions">
           <button class="sample-q" onclick="useQuestion(this)">Summarize the key findings</button>
           <button class="sample-q" onclick="useQuestion(this)">What are the main conclusions?</button>
@@ -54,19 +59,21 @@
     </div>
 
     <div class="chat-input-area">
-      <div id="noDocsBanner" class="no-docs-banner" style="display:none;">
-        ⚠ No documents selected. Pick documents from the sidebar to start chatting.
+      <div class="chat-input-inner">
+        <div id="noDocsBanner" class="no-docs-banner" style="display:none;">
+          ⚠ No documents selected — pick documents from the sidebar to start.
+        </div>
+        <div class="input-wrap">
+          <textarea
+            id="chatInput"
+            class="chat-textarea"
+            placeholder="Ask a question about your documents..."
+            rows="1"
+          ></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+        </div>
+        <div class="input-hint">↵ send · ⇧↵ newline · answers include source citations</div>
       </div>
-      <div class="input-wrap">
-        <textarea
-          id="chatInput"
-          class="chat-textarea"
-          placeholder="Ask a question about your documents..."
-          rows="1"
-        ></textarea>
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
-      </div>
-      <div class="input-hint">Enter to send · Shift+Enter for newline · Answers cite sources automatically</div>
     </div>
   </main>
 </div>
@@ -79,11 +86,8 @@
   let selectedDocIds = new Set();
   let allDocs = [];
 
-  // ── Init ──
   async function init() {
     allDocs = await fetchDocs();
-    renderSidebar(allDocs);
-    // Auto-select all docs on load
     allDocs.forEach(d => selectedDocIds.add(d.doc_id));
     renderSidebar(allDocs);
   }
@@ -91,7 +95,7 @@
   function renderSidebar(docs) {
     const container = document.getElementById('sidebarDocs');
     if (!docs.length) {
-      container.innerHTML = '<div class="empty-state" style="padding:20px 8px;"><span>📭</span>No documents.<br/><a href="/" style="color:var(--accent2);">Upload some</a></div>';
+      container.innerHTML = `<div class="empty-state" style="padding:24px 12px;"><div class="empty-state-icon">📭</div><p>No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none;">Upload some →</a></p></div>`;
       updateContextCount();
       return;
     }
@@ -126,7 +130,6 @@
     document.getElementById('noDocsBanner').style.display = selectedDocIds.size === 0 ? 'flex' : 'none';
   }
 
-  // ── Chat ──
   function useQuestion(btn) {
     const q = btn.textContent;
     document.getElementById('chatInput').value = q;
@@ -139,17 +142,14 @@
     if (!query) return;
     if (selectedDocIds.size === 0) { showToast('Select at least one document first.', 'error'); return; }
 
-    // Hide welcome
     const welcome = document.getElementById('chatWelcome');
     if (welcome) welcome.style.display = 'none';
 
-    // Add user message
     appendMessage('user', query);
     input.value = '';
     autoResize(input);
     chatHistory.push({ role: 'user', content: query });
 
-    // Show typing
     const typingId = showTyping();
     document.getElementById('sendBtn').disabled = true;
 
@@ -172,7 +172,7 @@
 
     } catch (err) {
       removeTyping(typingId);
-      appendMessage('assistant', `⚠ Error: ${err.message}`);
+      appendMessage('assistant', `Error: ${err.message}`);
     }
 
     document.getElementById('sendBtn').disabled = false;
@@ -195,7 +195,7 @@
         if (!seen.has(key)) { seen.add(key); unique.push(s); }
       });
       sourcesHtml = `<div class="msg-sources">${
-        unique.map(s => `<span class="source-chip">📄 ${escHtml(s.doc_name)} p.${s.page}</span>`).join('')
+        unique.map(s => `<span class="source-chip">${escHtml(s.doc_name)} · p.${s.page}</span>`).join('')
       }</div>`;
     }
 
@@ -243,13 +243,13 @@
     welcome.id = 'chatWelcome';
     welcome.className = 'chat-welcome';
     welcome.innerHTML = `
+      <div class="welcome-icon">✦</div>
       <h2>Ask your documents</h2>
       <p>Select documents from the sidebar and ask anything.</p>
     `;
     container.appendChild(welcome);
   }
 
-  // ── Textarea auto-resize ──
   const textarea = document.getElementById('chatInput');
   textarea.addEventListener('input', () => autoResize(textarea));
   textarea.addEventListener('keydown', e => {
@@ -258,7 +258,7 @@
 
   function autoResize(el) {
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
   }
 
   init();

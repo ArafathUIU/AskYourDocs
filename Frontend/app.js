@@ -21,12 +21,11 @@ function escHtml(str) {
 }
 
 function formatMarkdown(text) {
-  // Basic markdown: bold, inline code, line breaks, numbered lists
   return text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`([^`]+)`/g, '<code style="background:var(--cream);padding:1px 5px;font-family:inherit;">$1</code>')
-    .replace(/\[Source (\d+)\]/g, '<span style="color:var(--accent2);font-weight:600;">[Source $1]</span>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[Source (\d+)\]/g, '<span style="color:var(--accent);font-weight:600;font-family:var(--font-mono);font-size:0.8em;">[src.$1]</span>')
     .replace(/^(\d+\.) /gm, '<br/><strong>$1</strong> ')
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br/>')
@@ -39,8 +38,7 @@ function showToast(message, type = 'info') {
   if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
-  toast.innerHTML = `<span>${icon}</span><span>${escHtml(message)}</span>`;
+  toast.textContent = escHtml(message);
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
