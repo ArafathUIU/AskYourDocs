@@ -146,7 +146,8 @@ Go to [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - *What methodology was used?*
 - *What are the main conclusions?*
 - *List all recommendations*
-- *How did the boys adapt?* (for narrative documents)
+
+Basically any questions regarding the PDF you upload on the system. 
 
 ---
 
