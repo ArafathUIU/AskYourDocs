@@ -14,8 +14,8 @@ TEXTS_DIR = STORAGE_DIR / "texts"
 for d in [DOCS_DIR, INDEXES_DIR, TEXTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL = "claude-opus-4-5"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = "llama-3.3-70b-versatile"  # Or: "mixtral-8x7b-32768", "gemma2-9b-it"
 
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 150
