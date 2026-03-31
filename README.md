@@ -208,7 +208,7 @@ MAX_TOKENS    = 2048   # Max LLM response length
 
 ---
 
-## Known Limitations
+## Known Limitations and Future Enhancements
 
 - PDF only — no Word, Excel, or image files
 - Text-based PDFs only — scanned/image PDFs are not supported
