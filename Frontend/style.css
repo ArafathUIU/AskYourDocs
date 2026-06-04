@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -36,9 +36,9 @@
   --shadow-md: 0 4px 24px rgba(0,0,0,0.5);
   --shadow-lg: 0 8px 40px rgba(0,0,0,0.6);
   --shadow-glow: 0 0 40px var(--accent-glow);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --font-display: 'Playfair Display', Georgia, serif;
+  --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -89,6 +89,58 @@ body {
   min-height: 100vh;
   line-height: 1.6;
   letter-spacing: -0.01em;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ── Animated Background ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 15%, rgba(99,102,241,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 85% 20%, rgba(168,85,247,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 70% at 50% 85%, rgba(59,130,246,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 70% 60%, rgba(99,102,241,0.05) 0%, transparent 50%);
+  animation: bgShift 20s ease-in-out infinite alternate;
+}
+
+[data-theme="light"] body::before {
+  opacity: 0.6;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 15%, rgba(99,102,241,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 85% 20%, rgba(168,85,247,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 70% at 50% 85%, rgba(59,130,246,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 70% 60%, rgba(99,102,241,0.04) 0%, transparent 50%);
+  animation: bgShift 25s ease-in-out infinite alternate;
+}
+
+@keyframes bgShift {
+  0% {
+    background-position: 20% 15%, 85% 20%, 50% 85%, 70% 60%;
+  }
+  25% {
+    background-position: 30% 10%, 75% 30%, 40% 80%, 60% 50%;
+  }
+  50% {
+    background-position: 15% 25%, 80% 15%, 55% 75%, 75% 55%;
+  }
+  75% {
+    background-position: 25% 20%, 70% 25%, 45% 85%, 65% 45%;
+  }
+  100% {
+    background-position: 20% 15%, 85% 20%, 50% 85%, 70% 60%;
+  }
+}
+
+/* Ensure content is above the background */
+.site-header, .hero, .grid-2, .chat-layout, .viewer-layout, .toast-container {
+  position: relative;
+  z-index: 1;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -206,15 +258,15 @@ body {
 }
 .hero h1 {
   font-family: var(--font-display);
-  font-size: clamp(2.5rem, 5vw, 3.5rem);
-  font-weight: 600;
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  font-weight: 700;
   letter-spacing: -0.03em;
-  line-height: 1.12;
+  line-height: 1.10;
   margin-bottom: 16px;
   color: var(--text-primary);
 }
 .hero h1 em {
-  font-style: italic;
+  font-style: normal;
   background: linear-gradient(135deg, var(--accent), #a78bfa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -683,11 +735,11 @@ body {
 }
 .chat-welcome h2 {
   font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 10px;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 .chat-welcome p {
   font-size: 0.9375rem;
