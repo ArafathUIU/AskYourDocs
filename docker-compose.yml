@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    container_name: askyourdocs
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENCODE_API_KEY=${OPENCODE_API_KEY}
+    volumes:
+      - ./storage:/app/Backend/storage
+      - ./Frontend:/app/Frontend
+    restart: unless-stopped
