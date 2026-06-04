@@ -1,11 +1,19 @@
-from groq import Groq
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
+from config import OPENCODE_API_KEY, OPENCODE_BASE_URL, LLM_MODEL
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
-GROQ_MODEL = "llama-3.3-70b-versatile"
+_client = None
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        api_key = OPENCODE_API_KEY or os.getenv("OPENCODE_API_KEY", "")
+        _client = OpenAI(api_key=api_key, base_url=OPENCODE_BASE_URL)
+    return _client
 
 
 def generate_answer(
@@ -13,6 +21,8 @@ def generate_answer(
     context_chunks: list[dict],
     doc_names: dict[str, str],
     chat_history: list[dict] | None = None,
+    stream: bool = False,
+    model: str | None = None,
 ) -> dict:
     if not context_chunks:
         return {
@@ -70,8 +80,24 @@ Question: {query}
 Please answer based on the document excerpts above. Cite sources inline using [Source N]."""
     })
 
+    selected_model = model or LLM_MODEL
+    client = _get_client()
+
+    if stream:
+        stream_response = client.chat.completions.create(
+            model=selected_model,
+            messages=messages,
+            max_tokens=2048,
+            temperature=0.3,
+            stream=True,
+        )
+        return {
+            "stream": stream_response,
+            "sources": sources_used,
+        }
+
     response = client.chat.completions.create(
-        model=GROQ_MODEL,
+        model=selected_model,
         messages=messages,
         max_tokens=2048,
         temperature=0.3,
@@ -80,5 +106,5 @@ Please answer based on the document excerpts above. Cite sources inline using [S
     return {
         "answer": response.choices[0].message.content,
         "sources": sources_used,
-        "tokens_used": response.usage.total_tokens,
+        "tokens_used": response.usage.total_tokens if response.usage else 0,
     }

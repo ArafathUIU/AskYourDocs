@@ -7,14 +7,22 @@ from typing import Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-from config import DOCS_DIR, TEXTS_DIR, INDEXES_DIR, BASE_DIR
+from config import DOCS_DIR, TEXTS_DIR, INDEXES_DIR, BASE_DIR, PROJECT_ROOT, LLM_MODEL
 from rag.ingest import ingest_document, delete_document
 from rag.pipeline import run_rag_pipeline
+from rag.llm import generate_answer
+from db import (
+    add_document as db_add_doc, get_all_documents, get_document,
+    delete_document_db, create_chat, get_all_chats, get_chat, update_chat_title,
+    delete_chat, get_chat_documents, add_message, get_messages, clear_messages,
+    create_collection, get_all_collections, add_doc_to_collection,
+    remove_doc_from_collection, get_collection_documents, delete_collection,
+)
 
-app = FastAPI(title="AskYourDocs API", version="1.0.0")
+app = FastAPI(title="AskYourDocs API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,28 +33,12 @@ app.add_middleware(
 )
 
 # Serve frontend
-FRONTEND_DIR = BASE_DIR.parent / "Frontend"
+FRONTEND_DIR = PROJECT_ROOT / "Frontend"
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
-# ── Registry: doc_id → {name, path, chunk_count, page_count} ──────────────────
-REGISTRY_PATH = DOCS_DIR / "_registry.json"
-
-
-def load_registry() -> dict:
-    if REGISTRY_PATH.exists():
-        with open(REGISTRY_PATH, "r") as f:
-            return json.load(f)
-    return {}
-
-
-def save_registry(registry: dict):
-    with open(REGISTRY_PATH, "w") as f:
-        json.dump(registry, f, indent=2)
-
-
-# ── Routes ─────────────────────────────────────────────────────────────────────
+# ── Frontend Routes ──────────────────────────────────────────────────────────
 
 @app.get("/")
 async def root():
@@ -64,37 +56,35 @@ async def chat_page():
     raise HTTPException(404, "chat.html not found")
 
 
+@app.get("/viewer")
+async def viewer_page():
+    viewer = FRONTEND_DIR / "viewer.html"
+    if viewer.exists():
+        return FileResponse(str(viewer))
+    raise HTTPException(404, "viewer.html not found")
+
+
+# ── Document Routes ──────────────────────────────────────────────────────────
+
 @app.post("/api/upload")
 async def upload_document(file: UploadFile = File(...)):
-    """Upload and ingest a PDF document."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(400, "Only PDF files are supported.")
 
     doc_id = str(uuid.uuid4())[:8]
     pdf_path = DOCS_DIR / f"{doc_id}.pdf"
 
-    # Save PDF
     with open(pdf_path, "wb") as f:
         content = await file.read()
         f.write(content)
 
-    # Ingest
     try:
         result = ingest_document(doc_id, pdf_path)
     except Exception as e:
         pdf_path.unlink(missing_ok=True)
         raise HTTPException(500, f"Ingestion failed: {str(e)}")
 
-    # Update registry
-    registry = load_registry()
-    registry[doc_id] = {
-        "name": file.filename,
-        "doc_id": doc_id,
-        "chunk_count": result["chunk_count"],
-        "page_count": result["page_count"],
-        "title": result["title"],
-    }
-    save_registry(registry)
+    db_add_doc(doc_id, file.filename, result["chunk_count"], result["page_count"], result["title"])
 
     return {
         "doc_id": doc_id,
@@ -107,53 +97,40 @@ async def upload_document(file: UploadFile = File(...)):
 
 @app.get("/api/documents")
 async def list_documents():
-    """List all available documents."""
-    registry = load_registry()
-    return {"documents": list(registry.values())}
+    return {"documents": get_all_documents()}
 
 
 @app.delete("/api/documents/{doc_id}")
 async def remove_document(doc_id: str):
-    """Remove a document and all its data."""
-    registry = load_registry()
-    if doc_id not in registry:
+    doc = get_document(doc_id)
+    if not doc:
         raise HTTPException(404, "Document not found.")
 
-    # Delete files
     pdf_path = DOCS_DIR / f"{doc_id}.pdf"
     pdf_path.unlink(missing_ok=True)
     delete_document(doc_id)
-
-    # Update registry
-    del registry[doc_id]
-    save_registry(registry)
+    delete_document_db(doc_id)
 
     return {"message": f"Document {doc_id} removed."}
 
 
 @app.get("/api/documents/{doc_id}/download")
 async def download_document(doc_id: str):
-    """Download original PDF."""
-    registry = load_registry()
-    if doc_id not in registry:
+    doc = get_document(doc_id)
+    if not doc:
         raise HTTPException(404, "Document not found.")
 
     pdf_path = DOCS_DIR / f"{doc_id}.pdf"
     if not pdf_path.exists():
         raise HTTPException(404, "PDF file not found.")
 
-    return FileResponse(
-        str(pdf_path),
-        media_type="application/pdf",
-        filename=registry[doc_id]["name"],
-    )
+    return FileResponse(str(pdf_path), media_type="application/pdf", filename=doc["name"])
 
 
 @app.get("/api/documents/{doc_id}/text")
 async def download_text(doc_id: str, format: str = "txt"):
-    """Download extracted text as .txt or .json."""
-    registry = load_registry()
-    if doc_id not in registry:
+    doc = get_document(doc_id)
+    if not doc:
         raise HTTPException(404, "Document not found.")
 
     texts_path = TEXTS_DIR / f"{doc_id}.json"
@@ -166,7 +143,6 @@ async def download_text(doc_id: str, format: str = "txt"):
     if format == "json":
         return JSONResponse(content=data)
 
-    # Plain text export
     lines = []
     for chunk in data["chunks"]:
         lines.append(f"[Page {chunk['page']} | Chunk {chunk['chunk_index']+1}]")
@@ -174,7 +150,7 @@ async def download_text(doc_id: str, format: str = "txt"):
         lines.append("")
 
     text_content = "\n".join(lines)
-    doc_name = registry[doc_id]["name"].replace(".pdf", "")
+    doc_name = doc["name"].replace(".pdf", "")
 
     from fastapi.responses import Response
     return Response(
@@ -184,30 +160,104 @@ async def download_text(doc_id: str, format: str = "txt"):
     )
 
 
+# ── Chat Routes ──────────────────────────────────────────────────────────────
+
 class ChatRequest(BaseModel):
     query: str
     doc_ids: list[str]
     chat_history: Optional[list[dict]] = None
+    model: Optional[str] = None
+
+
+class ChatCreateRequest(BaseModel):
+    title: Optional[str] = "New Chat"
+    doc_ids: Optional[list[str]] = None
+
+
+class ChatTitleRequest(BaseModel):
+    title: str
+
+
+@app.post("/api/chats")
+async def create_new_chat(req: ChatCreateRequest):
+    chat_id = str(uuid.uuid4())[:8]
+    result = create_chat(chat_id, req.title or "New Chat", req.doc_ids)
+    return result
+
+
+@app.get("/api/chats")
+async def list_chats():
+    return {"chats": get_all_chats()}
+
+
+@app.get("/api/chats/{chat_id}")
+async def get_chat_detail(chat_id: str):
+    chat = get_chat(chat_id)
+    if not chat:
+        raise HTTPException(404, "Chat not found.")
+    messages = get_messages(chat_id)
+    doc_ids = get_chat_documents(chat_id)
+    return {"chat": dict(chat), "messages": [dict(m) for m in messages], "doc_ids": doc_ids}
+
+
+@app.patch("/api/chats/{chat_id}")
+async def rename_chat(chat_id: str, req: ChatTitleRequest):
+    update_chat_title(chat_id, req.title)
+    return {"message": "Chat renamed."}
+
+
+@app.delete("/api/chats/{chat_id}")
+async def remove_chat(chat_id: str):
+    delete_chat(chat_id)
+    return {"message": "Chat deleted."}
+
+
+class MessageCreate(BaseModel):
+    role: str
+    content: str
+    sources: Optional[list[dict]] = None
+
+
+@app.post("/api/chats/{chat_id}/messages")
+async def save_message(chat_id: str, req: MessageCreate):
+    add_message(chat_id, req.role, req.content, req.sources)
+    return {"message": "Message saved."}
+
+
+@app.delete("/api/chats/{chat_id}/messages")
+async def clear_chat_messages(chat_id: str):
+    clear_messages(chat_id)
+    return {"message": "Messages cleared."}
+
+
+@app.get("/api/models")
+async def list_models():
+    return {
+        "models": [
+            {"id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro", "provider": "OpenCode Go"},
+            {"id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash", "provider": "OpenCode Go"},
+            {"id": "qwen3.7-plus", "name": "Qwen 3.7 Plus", "provider": "OpenCode Go"},
+            {"id": "qwen3.7-max", "name": "Qwen 3.7 Max", "provider": "OpenCode Go"},
+            {"id": "kimi-k2.6", "name": "Kimi K2.6", "provider": "OpenCode Go"},
+            {"id": "mimo-v2.5", "name": "MiMo V2.5", "provider": "OpenCode Go"},
+            {"id": "glm-5.1", "name": "GLM 5.1", "provider": "OpenCode Go"},
+        ]
+    }
 
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-    """Main RAG chat endpoint."""
     if not request.query.strip():
         raise HTTPException(400, "Query cannot be empty.")
     if not request.doc_ids:
         raise HTTPException(400, "Select at least one document.")
 
-    registry = load_registry()
-    doc_names = {
-        doc_id: registry.get(doc_id, {}).get("name", doc_id)
-        for doc_id in request.doc_ids
-    }
-
-    # Validate doc_ids
+    docs = {d["doc_id"]: d for d in get_all_documents()}
     for doc_id in request.doc_ids:
-        if doc_id not in registry:
+        if doc_id not in docs:
             raise HTTPException(404, f"Document {doc_id} not found.")
+
+    doc_names = {doc_id: docs[doc_id]["name"] for doc_id in request.doc_ids}
 
     result = run_rag_pipeline(
         query=request.query,
@@ -219,7 +269,101 @@ async def chat(request: ChatRequest):
     return result
 
 
+@app.post("/api/chat/stream")
+async def chat_stream(request: ChatRequest):
+    if not request.query.strip():
+        raise HTTPException(400, "Query cannot be empty.")
+    if not request.doc_ids:
+        raise HTTPException(400, "Select at least one document.")
+
+    docs = {d["doc_id"]: d for d in get_all_documents()}
+    for doc_id in request.doc_ids:
+        if doc_id not in docs:
+            raise HTTPException(404, f"Document {doc_id} not found.")
+
+    doc_names = {doc_id: docs[doc_id]["name"] for doc_id in request.doc_ids}
+
+    from rag.retrieve import retrieve_chunks
+
+    chunks = retrieve_chunks(request.query, request.doc_ids)
+
+    if not chunks:
+        async def empty_stream():
+            yield f"data: {json.dumps({'error': 'No relevant content found.'})}\n\n"
+        return StreamingResponse(empty_stream(), media_type="text/event-stream")
+
+    result = generate_answer(
+        query=request.query,
+        context_chunks=chunks,
+        doc_names=doc_names,
+        chat_history=request.chat_history,
+        stream=True,
+        model=request.model,
+    )
+
+    stream = result["stream"]
+    sources = result["sources"]
+
+    async def token_stream():
+        try:
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    token = chunk.choices[0].delta.content
+                    yield f"data: {json.dumps({'token': token})}\n\n"
+            yield f"data: {json.dumps({'sources': sources, 'done': True})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(token_stream(), media_type="text/event-stream")
+
+
+# ── Collection Routes ────────────────────────────────────────────────────────
+
+class CollectionCreate(BaseModel):
+    name: str
+
+
+class CollectionDocAction(BaseModel):
+    doc_id: str
+
+
+@app.post("/api/collections")
+async def new_collection(req: CollectionCreate):
+    col_id = str(uuid.uuid4())[:8]
+    return create_collection(col_id, req.name)
+
+
+@app.get("/api/collections")
+async def list_collections():
+    return {"collections": get_all_collections()}
+
+
+@app.delete("/api/collections/{col_id}")
+async def remove_collection(col_id: str):
+    delete_collection(col_id)
+    return {"message": "Collection deleted."}
+
+
+@app.post("/api/collections/{col_id}/documents")
+async def add_to_collection(col_id: str, req: CollectionDocAction):
+    add_doc_to_collection(col_id, req.doc_id)
+    return {"message": "Document added to collection."}
+
+
+@app.delete("/api/collections/{col_id}/documents/{doc_id}")
+async def remove_from_collection(col_id: str, doc_id: str):
+    remove_doc_from_collection(col_id, doc_id)
+    return {"message": "Document removed from collection."}
+
+
+@app.get("/api/collections/{col_id}/documents")
+async def list_collection_docs(col_id: str):
+    return {"doc_ids": get_collection_documents(col_id)}
+
+
+# ── Health ───────────────────────────────────────────────────────────────────
+
 @app.get("/api/health")
 async def health():
-    registry = load_registry()
-    return {"status": "ok", "documents_loaded": len(registry)}
+    docs = get_all_documents()
+    return {"status": "ok", "documents_loaded": len(docs), "model": LLM_MODEL}

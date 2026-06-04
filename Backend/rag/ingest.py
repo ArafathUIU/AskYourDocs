@@ -17,7 +17,8 @@ def ingest_document(doc_id: str, pdf_path: Path) -> dict:
     1. Extract text from PDF
     2. Split into chunks
     3. Build TF-IDF index
-    4. Save everything to disk
+    4. Build semantic embeddings
+    5. Save everything to disk
     Returns summary dict.
     """
     # Extract text
@@ -39,10 +40,20 @@ def ingest_document(doc_id: str, pdf_path: Path) -> dict:
     )
     tfidf_matrix = vectorizer.fit_transform(texts)
 
-    # Save chunks
+    # Build semantic embeddings
+    from rag.embeddings import build_embedding_index
+    from rag.embeddings import embed_texts
+
+    # Save chunks first (needed by build_embedding_index)
     texts_path = TEXTS_DIR / f"{doc_id}.json"
     with open(texts_path, "w", encoding="utf-8") as f:
         json.dump({"doc_id": doc_id, "metadata": metadata, "chunks": chunks}, f, ensure_ascii=False)
+
+    # Build and save embeddings
+    try:
+        build_embedding_index(doc_id)
+    except Exception:
+        pass  # Embeddings are optional; TF-IDF still works
 
     # Save index
     index_path = INDEXES_DIR / f"{doc_id}.pkl"
@@ -78,9 +89,12 @@ def load_chunks(doc_id: str) -> list[dict]:
 
 def delete_document(doc_id: str):
     """Remove all stored data for a document."""
+    from rag.embeddings import delete_embeddings
+
     for path in [
         INDEXES_DIR / f"{doc_id}.pkl",
         TEXTS_DIR / f"{doc_id}.json",
     ]:
         if path.exists():
             path.unlink()
+    delete_embeddings(doc_id)

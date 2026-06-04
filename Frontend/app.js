@@ -1,11 +1,15 @@
-// ── Shared utilities across all pages ──────────────────────────────────────
+const API = '';
 
-const API = '';  // Same origin
+async function fetchJson(url, options = {}) {
+  const res = await fetch(url, options);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Request failed');
+  return data;
+}
 
 async function fetchDocs() {
   try {
-    const res = await fetch(`${API}/api/documents`);
-    const data = await res.json();
+    const data = await fetchJson(`${API}/api/documents`);
     return data.documents || [];
   } catch {
     return [];
@@ -25,7 +29,7 @@ function formatMarkdown(text) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\[Source (\d+)\]/g, '<span style="color:var(--accent);font-weight:600;font-family:var(--font-mono);font-size:0.8em;">[src.$1]</span>')
+    .replace(/\[Source (\d+)\]/g, '<span class="source-inline">[src.$1]</span>')
     .replace(/^(\d+\.) /gm, '<br/><strong>$1</strong> ')
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br/>')

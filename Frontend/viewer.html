@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AskYourDocs — PDF Viewer</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
+  <style>
+    .viewer-layout {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 56px);
+      background: var(--bg);
+    }
+    .viewer-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .viewer-toolbar .page-input {
+      width: 50px;
+      padding: 4px 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .viewer-toolbar span {
+      font-size: 0.8rem;
+      color: var(--text-2);
+      font-family: var(--font-mono);
+    }
+    .viewer-canvas-wrap {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .viewer-canvas-wrap canvas {
+      box-shadow: var(--shadow-lg);
+      border-radius: 4px;
+    }
+    .viewer-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-3);
+      font-size: 0.875rem;
+    }
+    .viewer-error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--red);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="inner">
+    <a href="/" class="logo">
+      <div class="logo-icon">📄</div>
+      AskYourDocs <span>/ viewer</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/" class="nav-btn">Documents</a>
+      <a href="/chat-page" class="nav-btn primary">Chat</a>
+    </nav>
+  </div>
+</header>
+
+<div class="viewer-layout">
+  <div class="viewer-toolbar">
+    <button class="btn" onclick="prevPage()">← Prev</button>
+    <input type="number" class="page-input" id="pageInput" min="1" value="1" onchange="goToPage()" />
+    <span>/</span>
+    <span id="totalPages">0</span>
+    <button class="btn" onclick="nextPage()">Next →</button>
+    <span style="margin-left:auto;font-size:0.75rem;color:var(--text-3);" id="docTitle"></span>
+  </div>
+  <div class="viewer-canvas-wrap" id="viewerContainer">
+    <div class="viewer-loading" id="loadingMsg">Loading PDF...</div>
+  </div>
+</div>
+
+<script type="module">
+  import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
+
+  const params = new URLSearchParams(window.location.search);
+  const docId = params.get('doc');
+  let targetPage = parseInt(params.get('page') || '1');
+  let pdfDoc = null;
+  let currentPage = targetPage;
+
+  async function loadPdf() {
+    if (!docId) {
+      document.getElementById('loadingMsg').innerHTML = '<div class="viewer-error">No document specified.</div>';
+      return;
+    }
+
+    try {
+      const url = `/api/documents/${docId}/download`;
+      const loadingTask = pdfjsLib.getDocument(url);
+      pdfDoc = await loadingTask.promise;
+      document.getElementById('totalPages').textContent = pdfDoc.numPages;
+      document.getElementById('pageInput').max = pdfDoc.numPages;
+      document.getElementById('loadingMsg').style.display = 'none';
+
+      // Get doc name
+      try {
+        const res = await fetch('/api/documents');
+        const data = await res.json();
+        const doc = data.documents.find(d => d.doc_id === docId);
+        if (doc) document.getElementById('docTitle').textContent = doc.name;
+      } catch {}
+
+      goToPage();
+    } catch (err) {
+      document.getElementById('loadingMsg').innerHTML = `<div class="viewer-error">Failed to load PDF: ${err.message}</div>`;
+    }
+  }
+
+  async function renderPage(num) {
+    if (!pdfDoc) return;
+    if (num < 1 || num > pdfDoc.numPages) return;
+
+    const page = await pdfDoc.getPage(num);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const container = document.getElementById('viewerContainer');
+
+    // Remove old canvas
+    const oldCanvas = container.querySelector('canvas');
+    if (oldCanvas) oldCanvas.remove();
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    container.appendChild(canvas);
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    document.getElementById('pageInput').value = num;
+    currentPage = num;
+
+    // Scroll to top of canvas
+    container.scrollTop = 0;
+  }
+
+  window.goToPage = function() {
+    const input = document.getElementById('pageInput');
+    let num = parseInt(input.value);
+    if (isNaN(num) || num < 1) num = 1;
+    if (pdfDoc && num > pdfDoc.numPages) num = pdfDoc.numPages;
+    input.value = num;
+    renderPage(num);
+  };
+
+  window.prevPage = function() {
+    if (currentPage > 1) {
+      currentPage--;
+      document.getElementById('pageInput').value = currentPage;
+      renderPage(currentPage);
+    }
+  };
+
+  window.nextPage = function() {
+    if (pdfDoc && currentPage < pdfDoc.numPages) {
+      currentPage++;
+      document.getElementById('pageInput').value = currentPage;
+      renderPage(currentPage);
+    }
+  };
+
+  loadPdf();
+</script>
+</body>
+</html>

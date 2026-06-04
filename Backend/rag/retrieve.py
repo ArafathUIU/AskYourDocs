@@ -7,7 +7,7 @@ from config import TOP_K_CHUNKS
 
 def retrieve_chunks(query: str, doc_ids: list[str], top_k: int = TOP_K_CHUNKS) -> list[dict]:
     """
-    Retrieve top-k relevant chunks from one or more documents.
+    Retrieve top-k relevant chunks from one or more documents using hybrid search.
     Returns list of {text, page, doc_id, score} dicts.
     """
     if not doc_ids:
@@ -25,19 +25,42 @@ def retrieve_chunks(query: str, doc_ids: list[str], top_k: int = TOP_K_CHUNKS) -
         vectorizer = index_data["vectorizer"]
         matrix = index_data["matrix"]
 
-        # Transform query
+        # TF-IDF scores
         query_vec = vectorizer.transform([query])
-        scores = cosine_similarity(query_vec, matrix).flatten()
+        tfidf_scores = cosine_similarity(query_vec, matrix).flatten()
+
+        # Semantic scores (if embeddings exist)
+        try:
+            from rag.embeddings import load_embeddings, embed_query
+            embeddings = load_embeddings(doc_id)
+            query_emb = embed_query(query).reshape(1, -1)
+            semantic_scores = cosine_similarity(query_emb, embeddings).flatten()
+            has_semantic = True
+        except (FileNotFoundError, ImportError):
+            semantic_scores = np.zeros(len(tfidf_scores))
+            has_semantic = False
+
+        # Normalize scores to 0-1 range
+        if tfidf_scores.max() > 0:
+            tfidf_scores = tfidf_scores / tfidf_scores.max()
+        if has_semantic and semantic_scores.max() > 0:
+            semantic_scores = semantic_scores / semantic_scores.max()
+
+        # Hybrid fusion
+        alpha = 0.6 if has_semantic else 1.0
+        hybrid_scores = alpha * tfidf_scores + (1 - alpha) * semantic_scores
 
         # Get top results
-        top_indices = np.argsort(scores)[::-1][:top_k]
+        top_indices = np.argsort(hybrid_scores)[::-1][:top_k]
         for idx in top_indices:
-            if scores[idx] > 0.01:  # Minimum relevance threshold
+            if hybrid_scores[idx] > 0.01:
                 all_results.append({
                     "text": chunks[idx]["text"],
                     "page": chunks[idx]["page"],
                     "doc_id": doc_id,
-                    "score": float(scores[idx]),
+                    "score": float(hybrid_scores[idx]),
+                    "tfidf_score": float(tfidf_scores[idx]),
+                    "semantic_score": float(semantic_scores[idx]) if has_semantic else 0,
                 })
 
     # Sort all results by score and return top_k
