@@ -110,8 +110,8 @@
   fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
 
   async function handleFiles(files) {
-      const pdfs = files.filter(f => f.name.match(/\.(pdf|docx|txt|md)$/i));
-      if (!pdfs.length) { showToast('Supported: PDF, DOCX, TXT, MD.', 'error'); return; }
+      const valid = files.filter(f => f.name.match(/\.(pdf|docx|txt|md)$/i));
+      if (!valid.length) { showToast('Supported: PDF, DOCX, TXT, MD.', 'error'); return; }
 
     const progressEl = document.getElementById('uploadProgress');
     const statusEl = document.getElementById('uploadStatus');
@@ -119,10 +119,10 @@
 
     progressEl.style.display = 'block';
 
-    for (let i = 0; i < pdfs.length; i++) {
-      const file = pdfs[i];
-      progressBar.style.width = Math.round((i / pdfs.length) * 100) + '%';
-      statusEl.textContent = `Uploading ${file.name} (${i+1}/${pdfs.length})...`;
+    for (let i = 0; i < valid.length; i++) {
+      const file = valid[i];
+      progressBar.style.width = Math.round((i / valid.length) * 100) + '%';
+      statusEl.textContent = `Uploading ${file.name} (${i+1}/${valid.length})...`;
 
       const fd = new FormData();
       fd.append('file', file);
@@ -131,7 +131,27 @@
         const res = await fetch('/api/upload', { method: 'POST', body: fd });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Upload failed');
-        showToast(`${file.name} — ${data.chunk_count} chunks indexed`, 'success');
+        showToast(`${file.name} — processing...`, 'info');
+
+        // Poll until ingestion complete
+        if (data.status === 'processing') {
+          let attempts = 0;
+          while (attempts < 60) {
+            await new Promise(r => setTimeout(r, 2000));
+            const sr = await fetch(`/api/documents/${data.doc_id}/status`);
+            const sd = await sr.json();
+            if (sd.chunk_count > 0 || sd.status === 'ready') {
+              showToast(`${file.name} — ${sd.chunk_count} chunks indexed`, 'success');
+              break;
+            }
+            if (sd.status === 'error') {
+              showToast(`${file.name} — ingestion failed`, 'error');
+              break;
+            }
+            attempts++;
+            statusEl.textContent = `Processing ${file.name}...`;
+          }
+        }
       } catch (err) {
         showToast(`${file.name}: ${err.message}`, 'error');
       }

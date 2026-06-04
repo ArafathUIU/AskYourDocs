@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -17,9 +17,9 @@ from rag.pipeline import run_rag_pipeline
 from rag.llm import generate_answer
 from db import (
     add_document as db_add_doc, get_all_documents, get_document,
-    delete_document_db, create_chat, get_all_chats, get_chat, update_chat_title,
-    delete_chat, get_chat_documents, add_message, get_messages, clear_messages,
-    create_collection, get_all_collections, add_doc_to_collection,
+    delete_document_db, set_ingestion_status, create_chat, get_all_chats, get_chat,
+    update_chat_title, delete_chat, get_chat_documents, add_message, get_messages,
+    clear_messages, create_collection, get_all_collections, add_doc_to_collection,
     remove_doc_from_collection, get_collection_documents, delete_collection,
 )
 
@@ -67,8 +67,17 @@ async def viewer_page():
 
 # ── Document Routes ──────────────────────────────────────────────────────────
 
+def _ingest_background(doc_id: str, doc_path: Path, filename: str):
+    try:
+        result = ingest_document(doc_id, doc_path)
+        db_add_doc(doc_id, filename, result["chunk_count"], result["page_count"], result["title"])
+        set_ingestion_status(doc_id, "ready")
+    except Exception:
+        set_ingestion_status(doc_id, "error")
+
+
 @app.post("/api/upload")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
     ext = Path(file.filename).suffix.lower()
     if ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type. Supported: {', '.join(get_supported_extensions())}")
@@ -80,20 +89,32 @@ async def upload_document(file: UploadFile = File(...)):
         content = await file.read()
         f.write(content)
 
-    try:
-        result = ingest_document(doc_id, doc_path)
-    except Exception as e:
-        doc_path.unlink(missing_ok=True)
-        raise HTTPException(500, f"Ingestion failed: {str(e)}")
+    # Register immediately with processing status
+    db_add_doc(doc_id, file.filename, 0, 0, file.filename)
+    set_ingestion_status(doc_id, "processing")
 
-    db_add_doc(doc_id, file.filename, result["chunk_count"], result["page_count"], result["title"])
+    # Ingest in background
+    if background_tasks:
+        background_tasks.add_task(_ingest_background, doc_id, doc_path, file.filename)
 
     return {
         "doc_id": doc_id,
         "name": file.filename,
-        "chunk_count": result["chunk_count"],
-        "page_count": result["page_count"],
-        "message": "Document ingested successfully.",
+        "status": "processing",
+        "message": "Document uploaded. Processing in background...",
+    }
+
+
+@app.get("/api/documents/{doc_id}/status")
+async def document_status(doc_id: str):
+    doc = get_document(doc_id)
+    if not doc:
+        raise HTTPException(404, "Document not found.")
+    return {
+        "doc_id": doc_id,
+        "status": doc.get("ingestion_status", "ready"),
+        "chunk_count": doc["chunk_count"],
+        "page_count": doc["page_count"],
     }
 
 

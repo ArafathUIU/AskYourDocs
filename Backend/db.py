@@ -65,6 +65,11 @@ def init_db():
             FOREIGN KEY (doc_id) REFERENCES documents(doc_id) ON DELETE CASCADE
         );
     """)
+    # Add ingestion_status column if missing (safe migration)
+    try:
+        conn.execute("ALTER TABLE documents ADD COLUMN ingestion_status TEXT DEFAULT 'ready'")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -74,9 +79,16 @@ def init_db():
 def add_document(doc_id: str, name: str, chunk_count: int, page_count: int, title: str = ""):
     conn = get_db()
     conn.execute(
-        "INSERT OR REPLACE INTO documents (doc_id, name, chunk_count, page_count, title) VALUES (?, ?, ?, ?, ?)",
+        "INSERT OR REPLACE INTO documents (doc_id, name, chunk_count, page_count, title, ingestion_status) VALUES (?, ?, ?, ?, ?, 'ready')",
         (doc_id, name, chunk_count, page_count, title)
     )
+    conn.commit()
+    conn.close()
+
+
+def set_ingestion_status(doc_id: str, status: str):
+    conn = get_db()
+    conn.execute("UPDATE documents SET ingestion_status = ? WHERE doc_id = ?", (status, doc_id))
     conn.commit()
     conn.close()
 
