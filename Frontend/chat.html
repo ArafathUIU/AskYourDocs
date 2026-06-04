@@ -280,10 +280,9 @@
     document.getElementById('sendBtn').disabled = true;
     isStreaming = true;
 
-    // Save user message to DB
-    if (currentChatId) {
-      try { await fetchJson('/api/chats', { method: 'POST' }).catch(() => {}); } catch {}
-      if (!currentChatId) {
+    // Ensure chat exists
+    if (!currentChatId) {
+      try {
         const data = await fetchJson('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -291,7 +290,10 @@
         });
         currentChatId = data.chat_id;
         await loadChatList();
-      }
+      } catch (e) { /* non-fatal */ }
+    }
+    // Save user message
+    if (currentChatId) {
       fetch(`/api/chats/${currentChatId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -313,8 +315,14 @@
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Chat failed');
+        let errMsg = 'Chat failed';
+        try {
+          const err = await res.json();
+          errMsg = err.detail || errMsg;
+        } catch {
+          errMsg = `Server error (${res.status})`;
+        }
+        throw new Error(errMsg);
       }
 
       removeTyping(typingId);

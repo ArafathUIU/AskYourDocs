@@ -292,14 +292,19 @@ async def chat_stream(request: ChatRequest):
             yield f"data: {json.dumps({'error': 'No relevant content found.'})}\n\n"
         return StreamingResponse(empty_stream(), media_type="text/event-stream")
 
-    result = generate_answer(
-        query=request.query,
-        context_chunks=chunks,
-        doc_names=doc_names,
-        chat_history=request.chat_history,
-        stream=True,
-        model=request.model,
-    )
+    try:
+        result = generate_answer(
+            query=request.query,
+            context_chunks=chunks,
+            doc_names=doc_names,
+            chat_history=request.chat_history,
+            stream=True,
+            model=request.model,
+        )
+    except Exception as e:
+        async def error_stream():
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        return StreamingResponse(error_stream(), media_type="text/event-stream")
 
     stream = result["stream"]
     sources = result["sources"]
