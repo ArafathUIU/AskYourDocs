@@ -19,8 +19,9 @@ from db import (
     add_document as db_add_doc, get_all_documents, get_document,
     delete_document_db, set_ingestion_status, create_chat, get_all_chats, get_chat,
     update_chat_title, delete_chat, get_chat_documents, add_message, get_messages,
-    clear_messages, create_collection, get_all_collections, add_doc_to_collection,
-    remove_doc_from_collection, get_collection_documents, delete_collection,
+    clear_messages, add_feedback, create_collection, get_all_collections,
+    add_doc_to_collection, remove_doc_from_collection, get_collection_documents,
+    delete_collection,
 )
 
 app = FastAPI(title="AskYourDocs API", version="2.0.0")
@@ -253,8 +254,8 @@ class MessageCreate(BaseModel):
 
 @app.post("/api/chats/{chat_id}/messages")
 async def save_message(chat_id: str, req: MessageCreate):
-    add_message(chat_id, req.role, req.content, req.sources)
-    return {"message": "Message saved."}
+    msg_id = add_message(chat_id, req.role, req.content, req.sources)
+    return {"message": "Message saved.", "id": msg_id}
 
 
 @app.delete("/api/chats/{chat_id}/messages")
@@ -397,6 +398,76 @@ async def remove_from_collection(col_id: str, doc_id: str):
 @app.get("/api/collections/{col_id}/documents")
 async def list_collection_docs(col_id: str):
     return {"doc_ids": get_collection_documents(col_id)}
+
+
+# ── Feedback ─────────────────────────────────────────────────────────────────
+
+class FeedbackRequest(BaseModel):
+    message_id: int
+    rating: str  # "up" or "down"
+
+
+@app.post("/api/chats/{chat_id}/feedback")
+async def submit_feedback(chat_id: str, req: FeedbackRequest):
+    add_feedback(chat_id, req.message_id, req.rating)
+    return {"message": "Feedback recorded."}
+
+
+# ── Export ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/chats/{chat_id}/export")
+async def export_chat(chat_id: str):
+    chat = get_chat(chat_id)
+    if not chat:
+        raise HTTPException(404, "Chat not found.")
+    messages = get_messages(chat_id)
+
+    md_lines = [f"# {chat['title']}", "", f"*Exported from AskYourDocs*", ""]
+    for m in messages:
+        role = "**You**" if m["role"] == "user" else "**AI**"
+        md_lines.append(f"### {role}")
+        md_lines.append(m["content"])
+        if m.get("sources"):
+            try:
+                sources = json.loads(m["sources"])
+                for s in sources:
+                    md_lines.append(f"> Source: {s['doc_name']}, page {s['page']}")
+            except Exception:
+                pass
+        md_lines.append("")
+
+    markdown = "\n".join(md_lines)
+
+    from fastapi.responses import Response
+    safe_title = "".join(c for c in chat["title"] if c.isalnum() or c in " _-").rstrip()
+    return Response(
+        content=markdown.encode("utf-8"),
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{safe_title or "chat"}.md"'},
+    )
+
+
+# ── Prompt Library ────────────────────────────────────────────────────────────
+
+PROMPT_LIBRARY = [
+    {"id": "summarize", "label": "Summarize", "prompt": "Summarize the key points of this document."},
+    {"id": "conclusions", "label": "Main Conclusions", "prompt": "What are the main conclusions or takeaways?"},
+    {"id": "recommend", "label": "Recommendations", "prompt": "List all recommendations mentioned in the document."},
+    {"id": "methodology", "label": "Methodology", "prompt": "What methodology or approach was used?"},
+    {"id": "compare", "label": "Compare Sections", "prompt": "Compare and contrast the different sections or arguments."},
+    {"id": "definitions", "label": "Definitions", "prompt": "List all key terms and their definitions found in the document."},
+    {"id": "action-items", "label": "Action Items", "prompt": "Extract all action items, tasks, or next steps mentioned."},
+    {"id": "timeline", "label": "Timeline", "prompt": "What is the timeline or sequence of events described?"},
+    {"id": "pros-cons", "label": "Pros & Cons", "prompt": "What are the pros and cons or advantages and disadvantages discussed?"},
+    {"id": "counter", "label": "Counter-arguments", "prompt": "What counter-arguments or opposing viewpoints are presented?"},
+    {"id": "bullet-summary", "label": "Bullet Summary", "prompt": "Give me a bullet-point summary of the entire document."},
+    {"id": "elaborate", "label": "Elaborate On", "prompt": ""},  # user fills in
+]
+
+
+@app.get("/api/prompts")
+async def list_prompts():
+    return {"prompts": PROMPT_LIBRARY}
 
 
 # ── Health ───────────────────────────────────────────────────────────────────

@@ -168,15 +168,17 @@ def get_chat_documents(chat_id: str) -> list[str]:
 
 # ── Message operations ──
 
-def add_message(chat_id: str, role: str, content: str, sources: list[dict] | None = None):
+def add_message(chat_id: str, role: str, content: str, sources: list[dict] | None = None) -> int:
     conn = get_db()
     conn.execute(
         "INSERT INTO messages (chat_id, role, content, sources) VALUES (?, ?, ?, ?)",
         (chat_id, role, content, json.dumps(sources) if sources else None)
     )
     conn.execute("UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE chat_id = ?", (chat_id,))
+    msg_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.commit()
     conn.close()
+    return msg_id
 
 
 def get_messages(chat_id: str) -> list[dict]:
@@ -244,3 +246,25 @@ def delete_collection(col_id: str):
 
 # Auto-init on import
 init_db()
+
+
+# ── Feedback operations ──
+
+def add_feedback(chat_id: str, message_id: int, rating: str):
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id TEXT NOT NULL,
+            message_id INTEGER NOT NULL,
+            rating TEXT NOT NULL CHECK(rating IN ('up', 'down')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (chat_id, message_id) REFERENCES messages(chat_id, id) ON DELETE CASCADE
+        )
+    """)
+    conn.execute(
+        "INSERT OR REPLACE INTO feedback (chat_id, message_id, rating) VALUES (?, ?, ?)",
+        (chat_id, message_id, rating)
+    )
+    conn.commit()
+    conn.close()

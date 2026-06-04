@@ -519,6 +519,72 @@ body {
 }
 .chat-list-item:hover .chat-list-delete { opacity: 1; }
 .chat-list-delete:hover { background: var(--red-dim); color: var(--red); }
+
+.chat-list-action {
+  width: 18px; height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: all 0.12s;
+}
+.chat-list-item:hover .chat-list-action { opacity: 1; }
+.chat-list-action:hover { background: var(--accent-dim); color: var(--accent); }
+
+/* ── Feedback ── */
+.msg-feedback {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  padding-left: 0;
+}
+.feedback-btn {
+  width: 26px; height: 26px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  opacity: 0.5;
+}
+.feedback-btn:hover { opacity: 1; border-color: var(--accent-border); background: var(--accent-dim); }
+
+/* ── Prompt Library ── */
+.prompt-library {
+  border-top: 1px solid var(--border);
+  overflow-y: auto;
+  max-height: 280px;
+}
+.prompt-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.prompt-item {
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.12s;
+}
+.prompt-item:hover { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
 .sidebar-header {
   padding: 16px;
   border-bottom: 1px solid var(--border);

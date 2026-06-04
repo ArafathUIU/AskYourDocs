@@ -54,6 +54,10 @@
       <button class="btn" onclick="selectAllDocs()">All</button>
       <button class="btn" onclick="clearAllDocs()">None</button>
       <button class="btn" onclick="clearChat()">Clear</button>
+      </div>
+    <div class="prompt-library" id="promptLibrary">
+      <div class="sidebar-header"><h2>Prompts</h2></div>
+      <div class="prompt-list" id="promptList"></div>
     </div>
   </aside>
 
@@ -150,6 +154,7 @@
         <div class="chat-list-item ${c.chat_id === currentChatId ? 'active' : ''}" data-id="${c.chat_id}">
           <div class="chat-list-title" onclick="loadChat('${c.chat_id}')">${escHtml(c.title || 'New Chat')}</div>
           <div class="chat-list-meta">${c.msg_count || 0} msgs</div>
+          <button class="chat-list-action" title="Export" onclick="event.stopPropagation(); exportChat('${c.chat_id}')">⬇</button>
           <button class="chat-list-delete" title="Delete" onclick="event.stopPropagation(); deleteChatConfirm('${c.chat_id}')">✕</button>
         </div>
       `).join('');
@@ -402,6 +407,7 @@
 
     const avatar = role === 'user' ? 'YOU' : 'AI';
     const formattedText = formatMarkdown(text);
+    const msgId = 'msg-' + Date.now();
 
     let sourcesHtml = '';
     if (sources && sources.length) {
@@ -416,10 +422,17 @@
       }</div>`;
     }
 
+    const feedbackHtml = role === 'assistant' ? `
+      <div class="msg-feedback" id="feedback-${msgId}">
+        <button class="feedback-btn" onclick="rateMessage('${msgId}', 'up')" title="Helpful">👍</button>
+        <button class="feedback-btn" onclick="rateMessage('${msgId}', 'down')" title="Not helpful">👎</button>
+      </div>` : '';
+
     div.innerHTML = `
       <div class="msg-avatar">${avatar}</div>
       <div class="msg-body">
         <div class="msg-bubble">${formattedText}${sourcesHtml}</div>
+        ${feedbackHtml}
       </div>
     `;
     container.appendChild(div);
@@ -513,7 +526,53 @@
     el.style.height = Math.min(el.scrollHeight, 140) + 'px';
   }
 
+  function exportChat(chatId) {
+    window.open(`/api/chats/${chatId}/export`, '_blank');
+  }
+
+  async function rateMessage(msgDivId, rating) {
+    if (!currentChatId) return;
+    const fbEl = document.getElementById(`feedback-${msgDivId}`);
+    if (fbEl) {
+      fbEl.innerHTML = rating === 'up' ? '✅ Thanks!' : '📝 Noted';
+      fbEl.style.pointerEvents = 'none';
+    }
+    try {
+      await fetchJson(`/api/chats/${currentChatId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: 0, rating }),
+      });
+    } catch {}
+  }
+
+  async function loadPrompts() {
+    try {
+      const data = await fetchJson('/api/prompts');
+      const list = document.getElementById('promptList');
+      if (!list) return;
+      list.innerHTML = data.prompts.map(p => `
+        <button class="prompt-item" onclick="useQuestion(this)">${escHtml(p.label)}</button>
+      `).join('');
+      // Store prompts for useQuestion
+      window._prompts = data.prompts;
+      // Override useQuestion for prompt buttons
+      const origUseQuestion = useQuestion;
+      window.useQuestion = function(btn) {
+        const label = btn.textContent.trim();
+        const p = window._prompts.find(p => p.label === label);
+        if (p && p.prompt) {
+          document.getElementById('chatInput').value = p.prompt;
+        } else {
+          document.getElementById('chatInput').value = label;
+        }
+        document.getElementById('chatInput').focus();
+      };
+    } catch {}
+  }
+
   init();
+  loadPrompts();
 </script>
 </body>
 </html>
