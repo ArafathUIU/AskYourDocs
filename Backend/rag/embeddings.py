@@ -1,20 +1,25 @@
 import json
 import numpy as np
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
 
 from config import TEXTS_DIR, INDEXES_DIR
 
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 
-
 _embedding_model = None
+_embedding_error = None
 
 
 def get_embedding_model():
-    global _embedding_model
-    if _embedding_model is None:
-        _embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    global _embedding_model, _embedding_error
+    if _embedding_model is None and _embedding_error is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            _embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        except Exception as e:
+            _embedding_error = str(e)
+    if _embedding_error:
+        raise RuntimeError(f"Embeddings unavailable: {_embedding_error}")
     return _embedding_model
 
 
