@@ -17,6 +17,7 @@
     <nav class="nav-links">
       <a href="/" class="nav-btn active">Documents</a>
       <a href="/chat-page" class="nav-btn primary">Chat →</a>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
     </nav>
   </div>
 </header>
@@ -51,10 +52,10 @@
       </div>
       <div class="panel-body">
         <div class="upload-zone" id="uploadZone">
-          <input type="file" id="fileInput" accept=".pdf" multiple />
+          <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" multiple />
           <div class="upload-icon">📎</div>
-          <h3>Drop PDFs here or click to browse</h3>
-          <p>PDF only · Multiple files supported · Any size</p>
+          <h3>Drop files here or click to browse</h3>
+          <p>PDF · DOCX · TXT · Markdown · Multiple files supported</p>
         </div>
         <div class="upload-progress" id="uploadProgress">
           <div class="upload-status-text" id="uploadStatus">Processing...</div>
@@ -84,6 +85,18 @@
 
 <script src="/static/app.js"></script>
 <script>
+  // Theme
+  (function() {
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+  })();
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }
+
   const fileInput = document.getElementById('fileInput');
   const uploadZone = document.getElementById('uploadZone');
 
@@ -97,8 +110,8 @@
   fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
 
   async function handleFiles(files) {
-    const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
-    if (!pdfs.length) { showToast('Only PDF files are supported.', 'error'); return; }
+      const pdfs = files.filter(f => f.name.match(/\.(pdf|docx|txt|md)$/i));
+      if (!pdfs.length) { showToast('Supported: PDF, DOCX, TXT, MD.', 'error'); return; }
 
     const progressEl = document.getElementById('uploadProgress');
     const statusEl = document.getElementById('uploadStatus');
@@ -143,6 +156,11 @@
     document.getElementById('stat-chunks').textContent = docs.reduce((a, d) => a + (d.chunk_count || 0), 0);
   }
 
+  function getDocIcon(name) {
+    const ext = (name || '').split('.').pop().toLowerCase();
+    return { pdf: 'PDF', docx: 'DOCX', txt: 'TXT', md: 'MD' }[ext] || 'DOC';
+  }
+
   function renderDocList(docs) {
     const container = document.getElementById('docList');
     if (!docs.length) {
@@ -151,7 +169,7 @@
     }
     container.innerHTML = '<div class="doc-list">' + docs.map(doc => `
       <div class="doc-card" data-id="${doc.doc_id}">
-        <div class="doc-icon">PDF</div>
+        <div class="doc-icon">${getDocIcon(doc.name)}</div>
         <div class="doc-info">
           <div class="doc-name">${escHtml(doc.name)}</div>
           <div class="doc-meta">${doc.page_count}p · ${doc.chunk_count} chunks</div>

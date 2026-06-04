@@ -17,6 +17,7 @@
     <nav class="nav-links">
       <a href="/" class="nav-btn">Documents</a>
       <a href="/chat-page" class="nav-btn active primary">Chat</a>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
     </nav>
   </div>
 </header>
@@ -107,6 +108,18 @@
 
 <script src="/static/app.js"></script>
 <script>
+  // Theme
+  (function() {
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+  })();
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }
+
   let chatHistory = [];
   let selectedDocIds = new Set();
   let allDocs = [];

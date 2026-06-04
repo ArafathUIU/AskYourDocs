@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from config import DOCS_DIR, TEXTS_DIR, INDEXES_DIR, BASE_DIR, PROJECT_ROOT, LLM_MODEL
 from rag.ingest import ingest_document, delete_document
+from utils.doc_loader import get_supported_extensions, SUPPORTED_EXTENSIONS
 from rag.pipeline import run_rag_pipeline
 from rag.llm import generate_answer
 from db import (
@@ -68,20 +69,21 @@ async def viewer_page():
 
 @app.post("/api/upload")
 async def upload_document(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(400, "Only PDF files are supported.")
+    ext = Path(file.filename).suffix.lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(400, f"Unsupported file type. Supported: {', '.join(get_supported_extensions())}")
 
     doc_id = str(uuid.uuid4())[:8]
-    pdf_path = DOCS_DIR / f"{doc_id}.pdf"
+    doc_path = DOCS_DIR / f"{doc_id}{ext}"
 
-    with open(pdf_path, "wb") as f:
+    with open(doc_path, "wb") as f:
         content = await file.read()
         f.write(content)
 
     try:
-        result = ingest_document(doc_id, pdf_path)
+        result = ingest_document(doc_id, doc_path)
     except Exception as e:
-        pdf_path.unlink(missing_ok=True)
+        doc_path.unlink(missing_ok=True)
         raise HTTPException(500, f"Ingestion failed: {str(e)}")
 
     db_add_doc(doc_id, file.filename, result["chunk_count"], result["page_count"], result["title"])
@@ -106,8 +108,10 @@ async def remove_document(doc_id: str):
     if not doc:
         raise HTTPException(404, "Document not found.")
 
-    pdf_path = DOCS_DIR / f"{doc_id}.pdf"
-    pdf_path.unlink(missing_ok=True)
+    # Delete file with any supported extension
+    for ext in get_supported_extensions():
+        (DOCS_DIR / f"{doc_id}{ext}").unlink(missing_ok=True)
+
     delete_document(doc_id)
     delete_document_db(doc_id)
 
@@ -120,11 +124,19 @@ async def download_document(doc_id: str):
     if not doc:
         raise HTTPException(404, "Document not found.")
 
-    pdf_path = DOCS_DIR / f"{doc_id}.pdf"
-    if not pdf_path.exists():
-        raise HTTPException(404, "PDF file not found.")
+    # Find file with any supported extension
+    for ext in get_supported_extensions():
+        file_path = DOCS_DIR / f"{doc_id}{ext}"
+        if file_path.exists():
+            media = {
+                ".pdf": "application/pdf",
+                ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".txt": "text/plain",
+                ".md": "text/markdown",
+            }.get(ext, "application/octet-stream")
+            return FileResponse(str(file_path), media_type=media, filename=doc["name"])
 
-    return FileResponse(str(pdf_path), media_type="application/pdf", filename=doc["name"])
+    raise HTTPException(404, "File not found.")
 
 
 @app.get("/api/documents/{doc_id}/text")

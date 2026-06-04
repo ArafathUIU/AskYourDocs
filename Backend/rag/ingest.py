@@ -6,15 +6,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 
 from config import INDEXES_DIR, TEXTS_DIR
-from utils.pdf_loader import extract_text_from_pdf, get_pdf_metadata
+from utils.doc_loader import extract_text_from_file
 from utils.text_splitter import split_into_chunks
 from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 
-def ingest_document(doc_id: str, pdf_path: Path) -> dict:
+def ingest_document(doc_id: str, file_path: Path) -> dict:
     """
     Full ingestion pipeline:
-    1. Extract text from PDF
+    1. Extract text from file (PDF, DOCX, TXT, MD)
     2. Split into chunks
     3. Build TF-IDF index
     4. Build semantic embeddings
@@ -22,8 +22,7 @@ def ingest_document(doc_id: str, pdf_path: Path) -> dict:
     Returns summary dict.
     """
     # Extract text
-    raw_text = extract_text_from_pdf(pdf_path)
-    metadata = get_pdf_metadata(pdf_path)
+    raw_text, metadata = extract_text_from_file(file_path)
 
     # Chunk
     chunks = split_into_chunks(raw_text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP)
@@ -64,7 +63,7 @@ def ingest_document(doc_id: str, pdf_path: Path) -> dict:
         "doc_id": doc_id,
         "chunk_count": len(chunks),
         "page_count": metadata["page_count"],
-        "title": metadata["title"] or pdf_path.stem,
+        "title": metadata["title"] or file_path.stem,
     }
 
 
