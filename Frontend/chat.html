@@ -11,25 +11,25 @@
 <header class="site-header">
   <div class="inner">
     <a href="/" class="logo">
-      <div class="logo-icon">📄</div>
+      <div class="logo-icon">✦</div>
       AskYourDocs <span>/ chat</span>
     </a>
     <nav class="nav-links">
       <a href="/" class="nav-btn">Documents</a>
       <a href="/chat-page" class="nav-btn active primary">Chat</a>
-      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">◐</button>
     </nav>
   </div>
 </header>
 
 <div class="chat-layout">
-  <!-- Left: Chat list sidebar -->
+  <!-- Chats sidebar -->
   <aside class="chat-list-sidebar" id="chatListSidebar">
     <div class="sidebar-header">
       <h2>Conversations</h2>
     </div>
     <div class="chat-list" id="chatList">
-      <div class="empty-state" style="padding:16px 12px;">
+      <div class="empty-state" style="padding:16px 10px;">
         <p style="font-size:0.75rem;">No conversations yet.</p>
       </div>
     </div>
@@ -38,42 +38,42 @@
     </div>
   </aside>
 
-  <!-- Center: Document sidebar -->
+  <!-- Docs sidebar -->
   <aside class="chat-sidebar" id="docSidebar">
     <div class="sidebar-header">
       <h2>Context</h2>
       <div class="context-count" id="contextCount">0 selected</div>
     </div>
     <div class="sidebar-docs" id="sidebarDocs">
-      <div class="empty-state" style="padding:24px 12px;">
-        <div class="empty-state-icon">📭</div>
-        <p>No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none;">Upload some →</a></p>
+      <div class="empty-state" style="padding:24px 10px;">
+        <div class="empty-state-icon">+</div>
+        <p style="font-size:0.75rem;">No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none; font-weight:500;">Upload some →</a></p>
       </div>
     </div>
     <div class="sidebar-actions">
       <button class="btn" onclick="selectAllDocs()">All</button>
       <button class="btn" onclick="clearAllDocs()">None</button>
       <button class="btn" onclick="clearChat()">Clear</button>
-      </div>
+    </div>
     <div class="prompt-library" id="promptLibrary">
-      <div class="sidebar-header"><h2>Prompts</h2></div>
+      <div class="sidebar-header"><h2>Quick Prompts</h2></div>
       <div class="prompt-list" id="promptList"></div>
     </div>
   </aside>
 
-  <!-- Right: Chat main -->
+  <!-- Chat area -->
   <main class="chat-main">
     <div class="chat-messages" id="chatMessages">
       <div class="chat-welcome" id="chatWelcome">
         <div class="welcome-icon">✦</div>
         <h2>Ask your documents</h2>
-        <p>Select documents from the Context panel, then ask anything. I'll find the relevant passages and answer with citations.</p>
+        <p>Select documents from Context, then ask anything. Answers include source citations with page references.</p>
         <div class="sample-questions">
-          <button class="sample-q" onclick="useQuestion(this)">Summarize the key findings</button>
-          <button class="sample-q" onclick="useQuestion(this)">What are the main conclusions?</button>
-          <button class="sample-q" onclick="useQuestion(this)">List all recommendations</button>
-          <button class="sample-q" onclick="useQuestion(this)">What methodology was used?</button>
-          <button class="sample-q" onclick="useQuestion(this)">Compare the different sections</button>
+          <button class="sample-q" onclick="useQuestion(this)">Summarize key findings</button>
+          <button class="sample-q" onclick="useQuestion(this)">Main conclusions</button>
+          <button class="sample-q" onclick="useQuestion(this)">All recommendations</button>
+          <button class="sample-q" onclick="useQuestion(this)">What methodology?</button>
+          <button class="sample-q" onclick="useQuestion(this)">Compare sections</button>
         </div>
       </div>
     </div>
@@ -81,7 +81,7 @@
     <div class="chat-input-area">
       <div class="chat-input-inner">
         <div id="noDocsBanner" class="no-docs-banner" style="display:none;">
-          ⚠ No documents selected — pick documents from the Context panel.
+          No documents selected — pick documents from the Context panel to start.
         </div>
         <div class="input-bar">
           <select id="modelSelect" class="model-select">
@@ -96,13 +96,13 @@
             <textarea
               id="chatInput"
               class="chat-textarea"
-              placeholder="Ask a question about your documents..."
+              placeholder="Ask anything about your documents..."
               rows="1"
             ></textarea>
             <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
           </div>
         </div>
-        <div class="input-hint">↵ send · ⇧↵ newline · Streaming · Source citations</div>
+        <div class="input-hint">↵ Send · ⇧↵ New line · Streaming · Source citations</div>
       </div>
     </div>
   </main>
@@ -112,7 +112,6 @@
 
 <script src="/static/app.js"></script>
 <script>
-  // Theme
   (function() {
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
@@ -135,32 +134,27 @@
     allDocs.forEach(d => selectedDocIds.add(d.doc_id));
     renderDocSidebar(allDocs);
     await loadChatList();
-    // Auto-create a chat if none exist
     const chats = document.querySelectorAll('.chat-list-item');
     if (!chats.length) await newChat(false);
   }
-
-  // ── Chat list ────────────────────────────────────────────────
 
   async function loadChatList() {
     try {
       const data = await fetchJson('/api/chats');
       const list = document.getElementById('chatList');
       if (!data.chats.length) {
-        list.innerHTML = `<div class="empty-state" style="padding:16px 12px;"><p style="font-size:0.75rem;">No conversations yet.</p></div>`;
+        list.innerHTML = `<div class="empty-state" style="padding:16px 10px;"><p style="font-size:0.75rem;">No conversations yet.</p></div>`;
         return;
       }
       list.innerHTML = data.chats.map(c => `
         <div class="chat-list-item ${c.chat_id === currentChatId ? 'active' : ''}" data-id="${c.chat_id}">
           <div class="chat-list-title" onclick="loadChat('${c.chat_id}')">${escHtml(c.title || 'New Chat')}</div>
-          <div class="chat-list-meta">${c.msg_count || 0} msgs</div>
-          <button class="chat-list-action" title="Export" onclick="event.stopPropagation(); exportChat('${c.chat_id}')">⬇</button>
+          <div class="chat-list-meta">${c.msg_count || 0}</div>
+          <button class="chat-list-action" title="Export" onclick="event.stopPropagation(); exportChat('${c.chat_id}')">↓</button>
           <button class="chat-list-delete" title="Delete" onclick="event.stopPropagation(); deleteChatConfirm('${c.chat_id}')">✕</button>
         </div>
       `).join('');
-    } catch (e) {
-      /* silent */
-    }
+    } catch (e) {}
   }
 
   async function newChat(load = true) {
@@ -172,9 +166,7 @@
       });
       await loadChatList();
       if (load) await loadChat(data.chat_id);
-    } catch (e) {
-      showToast('Failed to create chat', 'error');
-    }
+    } catch (e) { showToast('Failed to create chat', 'error'); }
   }
 
   async function loadChat(chatId) {
@@ -183,12 +175,9 @@
       currentChatId = chatId;
       chatHistory = [];
       selectedDocIds.clear();
-
-      // Restore docs
       data.doc_ids.forEach(id => selectedDocIds.add(id));
       renderDocSidebar(allDocs);
 
-      // Restore messages
       const container = document.getElementById('chatMessages');
       container.innerHTML = '';
       data.messages.forEach(m => {
@@ -198,20 +187,14 @@
       });
 
       if (!data.messages.length) {
-        const welcome = document.getElementById('chatWelcome');
-        if (!welcome) {
-          const div = document.createElement('div');
-          div.id = 'chatWelcome';
-          div.className = 'chat-welcome';
-          div.innerHTML = `<div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents from the Context panel and ask anything.</p>`;
-          container.appendChild(div);
-        }
+        const div = document.createElement('div');
+        div.id = 'chatWelcome';
+        div.className = 'chat-welcome';
+        div.innerHTML = `<div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents from Context and ask anything.</p>`;
+        container.appendChild(div);
       }
-
       await loadChatList();
-    } catch (e) {
-      showToast('Failed to load chat', 'error');
-    }
+    } catch (e) { showToast('Failed to load chat', 'error'); }
   }
 
   async function deleteChatConfirm(chatId) {
@@ -221,25 +204,16 @@
       if (currentChatId === chatId) {
         currentChatId = null;
         chatHistory = [];
-        document.getElementById('chatMessages').innerHTML = '';
-        const welcome = document.createElement('div');
-        welcome.id = 'chatWelcome';
-        welcome.className = 'chat-welcome';
-        welcome.innerHTML = `<div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents and ask anything.</p>`;
-        document.getElementById('chatMessages').appendChild(welcome);
+        document.getElementById('chatMessages').innerHTML = `<div class="chat-welcome" id="chatWelcome"><div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents and ask anything.</p></div>`;
       }
       await loadChatList();
-    } catch (e) {
-      showToast('Failed to delete chat', 'error');
-    }
+    } catch (e) { showToast('Failed to delete chat', 'error'); }
   }
-
-  // ── Document sidebar ──────────────────────────────────────────
 
   function renderDocSidebar(docs) {
     const container = document.getElementById('sidebarDocs');
     if (!docs.length) {
-      container.innerHTML = `<div class="empty-state" style="padding:24px 12px;"><div class="empty-state-icon">📭</div><p>No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none;">Upload some →</a></p></div>`;
+      container.innerHTML = `<div class="empty-state" style="padding:24px 10px;"><div class="empty-state-icon">+</div><p style="font-size:0.75rem;">No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none; font-weight:500;">Upload some →</a></p></div>`;
       updateContextCount();
       return;
     }
@@ -256,28 +230,12 @@
     updateContextCount();
   }
 
-  function toggleDoc(docId) {
-    if (selectedDocIds.has(docId)) selectedDocIds.delete(docId);
-    else selectedDocIds.add(docId);
-    renderDocSidebar(allDocs);
-    checkNoDocs();
-  }
-
+  function toggleDoc(docId) { if (selectedDocIds.has(docId)) selectedDocIds.delete(docId); else selectedDocIds.add(docId); renderDocSidebar(allDocs); checkNoDocs(); }
   function selectAllDocs() { allDocs.forEach(d => selectedDocIds.add(d.doc_id)); renderDocSidebar(allDocs); checkNoDocs(); }
   function clearAllDocs() { selectedDocIds.clear(); renderDocSidebar(allDocs); checkNoDocs(); }
-  function updateContextCount() {
-    document.getElementById('contextCount').textContent = `${selectedDocIds.size} selected`;
-  }
-  function checkNoDocs() {
-    document.getElementById('noDocsBanner').style.display = selectedDocIds.size === 0 ? 'flex' : 'none';
-  }
-
-  // ── Chat messaging ────────────────────────────────────────────
-
-  function useQuestion(btn) {
-    document.getElementById('chatInput').value = btn.textContent;
-    document.getElementById('chatInput').focus();
-  }
+  function updateContextCount() { document.getElementById('contextCount').textContent = `${selectedDocIds.size} selected`; }
+  function checkNoDocs() { document.getElementById('noDocsBanner').style.display = selectedDocIds.size === 0 ? 'flex' : 'none'; }
+  function useQuestion(btn) { document.getElementById('chatInput').value = btn.textContent; document.getElementById('chatInput').focus(); }
 
   async function sendMessage() {
     if (isStreaming) return;
@@ -298,7 +256,6 @@
     document.getElementById('sendBtn').disabled = true;
     isStreaming = true;
 
-    // Ensure chat exists
     if (!currentChatId) {
       try {
         const data = await fetchJson('/api/chats', {
@@ -308,9 +265,8 @@
         });
         currentChatId = data.chat_id;
         await loadChatList();
-      } catch (e) { /* non-fatal */ }
+      } catch (e) {}
     }
-    // Save user message
     if (currentChatId) {
       fetch(`/api/chats/${currentChatId}/messages`, {
         method: 'POST',
@@ -324,22 +280,12 @@
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          doc_ids: [...selectedDocIds],
-          chat_history: chatHistory.slice(-10),
-          model,
-        }),
+        body: JSON.stringify({ query, doc_ids: [...selectedDocIds], chat_history: chatHistory.slice(-10), model }),
       });
 
       if (!res.ok) {
         let errMsg = 'Chat failed';
-        try {
-          const err = await res.json();
-          errMsg = err.detail || errMsg;
-        } catch {
-          errMsg = `Server error (${res.status})`;
-        }
+        try { const err = await res.json(); errMsg = err.detail || errMsg; } catch { errMsg = `Server error (${res.status})`; }
         throw new Error(errMsg);
       }
 
@@ -351,29 +297,19 @@
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        const text = decoder.decode(value, { stream: true });
-        const lines = text.split('\n');
-
+        const lines = decoder.decode(value, { stream: true }).split('\n');
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.token) {
-              fullText += data.token;
-              bubble.innerHTML = formatMarkdown(fullText);
-            }
-            if (data.sources) {
-              sources = data.sources;
-            }
+            if (data.token) { fullText += data.token; bubble.innerHTML = formatMarkdown(fullText); }
+            if (data.sources) { sources = data.sources; }
             if (data.done) {
               renderSources(msgId, sources);
               chatHistory.push({ role: 'assistant', content: fullText });
-              // Save to DB
               if (currentChatId) {
                 fetch(`/api/chats/${currentChatId}/messages`, {
                   method: 'POST',
@@ -382,19 +318,15 @@
                 }).catch(() => {});
               }
             }
-            if (data.error) {
-              bubble.innerHTML = `<span class="chat-error">Error: ${escHtml(data.error)}</span>`;
-            }
+            if (data.error) { bubble.innerHTML = `<span class="chat-error">Error: ${escHtml(data.error)}</span>`; }
           } catch {}
         }
-        const container = document.getElementById('chatMessages');
-        container.scrollTop = container.scrollHeight;
+        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
       }
     } catch (err) {
       removeTyping(typingId);
       appendMessage('assistant', `Error: ${err.message}`);
     }
-
     document.getElementById('sendBtn').disabled = false;
     isStreaming = false;
   }
@@ -403,38 +335,22 @@
     const container = document.getElementById('chatMessages');
     const div = document.createElement('div');
     div.className = `message ${role}`;
-    if (animate) div.style.animation = 'msgIn 0.18s ease';
+    if (animate) div.style.animation = 'msgSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
 
-    const avatar = role === 'user' ? 'YOU' : 'AI';
+    const avatar = role === 'user' ? 'U' : 'AI';
     const formattedText = formatMarkdown(text);
-    const msgId = 'msg-' + Date.now();
+    const msgDivId = 'msg-' + Date.now();
 
     let sourcesHtml = '';
     if (sources && sources.length) {
-      const unique = [];
-      const seen = new Set();
-      sources.forEach(s => {
-        const key = `${s.doc_name}-${s.page}`;
-        if (!seen.has(key)) { seen.add(key); unique.push(s); }
-      });
-      sourcesHtml = `<div class="msg-sources">${
-        unique.map(s => `<span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})" title="Open page ${s.page}">${escHtml(s.doc_name)} · p.${s.page}</span>`).join('')
-      }</div>`;
+      const unique = []; const seen = new Set();
+      sources.forEach(s => { const k = `${s.doc_name}-${s.page}`; if (!seen.has(k)) { seen.add(k); unique.push(s); } });
+      sourcesHtml = `<div class="msg-sources">${unique.map(s => `<span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})">${escHtml(s.doc_name)} p.${s.page}</span>`).join('')}</div>`;
     }
 
-    const feedbackHtml = role === 'assistant' ? `
-      <div class="msg-feedback" id="feedback-${msgId}">
-        <button class="feedback-btn" onclick="rateMessage('${msgId}', 'up')" title="Helpful">👍</button>
-        <button class="feedback-btn" onclick="rateMessage('${msgId}', 'down')" title="Not helpful">👎</button>
-      </div>` : '';
+    const feedbackHtml = role === 'assistant' ? `<div class="msg-feedback" id="feedback-${msgDivId}"><button class="feedback-btn" onclick="rateMessage('${msgDivId}', 'up')" title="Helpful">👍</button><button class="feedback-btn" onclick="rateMessage('${msgDivId}', 'down')" title="Not helpful">👎</button></div>` : '';
 
-    div.innerHTML = `
-      <div class="msg-avatar">${avatar}</div>
-      <div class="msg-body">
-        <div class="msg-bubble">${formattedText}${sourcesHtml}</div>
-        ${feedbackHtml}
-      </div>
-    `;
+    div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="msg-bubble">${formattedText}${sourcesHtml}</div>${feedbackHtml}</div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
   }
@@ -445,13 +361,7 @@
     div.className = 'message assistant streaming';
     const id = 'stream-' + Date.now();
     div.id = id;
-    div.innerHTML = `
-      <div class="msg-avatar">AI</div>
-      <div class="msg-body">
-        <div class="msg-bubble" id="bubble-${id}"></div>
-        <div class="msg-sources" id="sources-${id}"></div>
-      </div>
-    `;
+    div.innerHTML = `<div class="msg-avatar">AI</div><div class="msg-body"><div class="msg-bubble" id="bubble-${id}"></div><div class="msg-sources" id="sources-${id}"></div><div class="msg-feedback" id="feedback-${id}"></div></div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
     return id;
@@ -460,20 +370,15 @@
   function renderSources(msgId, sources) {
     const el = document.getElementById(`sources-${msgId}`);
     if (!el || !sources.length) return;
-    const unique = [];
-    const seen = new Set();
-    sources.forEach(s => {
-      const key = `${s.doc_name}-${s.page}`;
-      if (!seen.has(key)) { seen.add(key); unique.push(s); }
-    });
-    el.innerHTML = unique.map(s =>
-      `<span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})" title="Open page ${s.page}">${escHtml(s.doc_name)} · p.${s.page}</span>`
-    ).join('');
+    const unique = []; const seen = new Set();
+    sources.forEach(s => { const k = `${s.doc_name}-${s.page}`; if (!seen.has(k)) { seen.add(k); unique.push(s); } });
+    el.innerHTML = unique.map(s => `<span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})">${escHtml(s.doc_name)} p.${s.page}</span>`).join('');
+    // Add feedback after streaming
+    const fbEl = document.getElementById(`feedback-${msgId}`);
+    if (fbEl) fbEl.innerHTML = `<button class="feedback-btn" onclick="rateMessage('${msgId}', 'up')" title="Helpful">👍</button><button class="feedback-btn" onclick="rateMessage('${msgId}', 'down')" title="Not helpful">👎</button>`;
   }
 
-  function viewSource(docId, page) {
-    window.open(`/viewer?doc=${docId}&page=${page}`, '_blank');
-  }
+  function viewSource(docId, page) { window.open(`/viewer?doc=${docId}&page=${page}`, '_blank'); }
 
   function showTyping() {
     const id = 'typing-' + Date.now();
@@ -481,69 +386,32 @@
     const div = document.createElement('div');
     div.className = 'message assistant';
     div.id = id;
-    div.innerHTML = `
-      <div class="msg-avatar">AI</div>
-      <div class="msg-body">
-        <div class="typing-indicator">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-        </div>
-      </div>
-    `;
+    div.innerHTML = `<div class="msg-avatar">AI</div><div class="msg-body"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
     return id;
   }
 
-  function removeTyping(id) {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-  }
+  function removeTyping(id) { const el = document.getElementById(id); if (el) el.remove(); }
 
   function clearChat() {
     chatHistory = [];
-    const container = document.getElementById('chatMessages');
-    container.innerHTML = '';
-    const welcome = document.createElement('div');
-    welcome.id = 'chatWelcome';
-    welcome.className = 'chat-welcome';
-    welcome.innerHTML = `<div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents and ask anything.</p>`;
-    container.appendChild(welcome);
-    if (currentChatId) {
-      fetch(`/api/chats/${currentChatId}/messages`, { method: 'DELETE' }).catch(() => {});
-    }
+    document.getElementById('chatMessages').innerHTML = `<div class="chat-welcome" id="chatWelcome"><div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents and ask anything.</p></div>`;
+    if (currentChatId) fetch(`/api/chats/${currentChatId}/messages`, { method: 'DELETE' }).catch(() => {});
   }
 
   const textarea = document.getElementById('chatInput');
   textarea.addEventListener('input', () => autoResize(textarea));
-  textarea.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  });
+  textarea.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+  function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; }
 
-  function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
-  }
-
-  function exportChat(chatId) {
-    window.open(`/api/chats/${chatId}/export`, '_blank');
-  }
+  function exportChat(chatId) { window.open(`/api/chats/${chatId}/export`, '_blank'); }
 
   async function rateMessage(msgDivId, rating) {
     if (!currentChatId) return;
     const fbEl = document.getElementById(`feedback-${msgDivId}`);
-    if (fbEl) {
-      fbEl.innerHTML = rating === 'up' ? '✅ Thanks!' : '📝 Noted';
-      fbEl.style.pointerEvents = 'none';
-    }
-    try {
-      await fetchJson(`/api/chats/${currentChatId}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message_id: 0, rating }),
-      });
-    } catch {}
+    if (fbEl) { fbEl.innerHTML = rating === 'up' ? '✓ Thanks' : '✕ Noted'; fbEl.style.pointerEvents = 'none'; fbEl.style.color = 'var(--text-tertiary)'; fbEl.style.fontSize = '0.7rem'; fbEl.style.fontWeight = '500'; }
+    try { await fetchJson(`/api/chats/${currentChatId}/feedback`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: 0, rating }) }); } catch {}
   }
 
   async function loadPrompts() {
@@ -551,25 +419,11 @@
       const data = await fetchJson('/api/prompts');
       const list = document.getElementById('promptList');
       if (!list) return;
-      list.innerHTML = data.prompts.map(p => `
-        <button class="prompt-item" onclick="useQuestion(this)">${escHtml(p.label)}</button>
-      `).join('');
-      // Store prompts for useQuestion
-      window._prompts = data.prompts;
-      // Override useQuestion for prompt buttons
-      const origUseQuestion = useQuestion;
-      window.useQuestion = function(btn) {
-        const label = btn.textContent.trim();
-        const p = window._prompts.find(p => p.label === label);
-        if (p && p.prompt) {
-          document.getElementById('chatInput').value = p.prompt;
-        } else {
-          document.getElementById('chatInput').value = label;
-        }
-        document.getElementById('chatInput').focus();
-      };
+      list.innerHTML = data.prompts.map(p => `<button class="prompt-item" onclick="usePrompt('${escHtml(p.prompt || p.label)}')">${escHtml(p.label)}</button>`).join('');
     } catch {}
   }
+
+  function usePrompt(prompt) { document.getElementById('chatInput').value = prompt; document.getElementById('chatInput').focus(); }
 
   init();
   loadPrompts();

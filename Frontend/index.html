@@ -11,51 +11,51 @@
 <header class="site-header">
   <div class="inner">
     <a href="/" class="logo">
-      <div class="logo-icon">📄</div>
+      <div class="logo-icon">✦</div>
       AskYourDocs <span>/ docs</span>
     </a>
     <nav class="nav-links">
       <a href="/" class="nav-btn active">Documents</a>
-      <a href="/chat-page" class="nav-btn primary">Chat →</a>
-      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
+      <a href="/chat-page" class="nav-btn primary">Chat</a>
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">◐</button>
     </nav>
   </div>
 </header>
 
-<div class="container">
+<div class="container page-padding">
   <div class="hero">
-    <div class="hero-label">Document Intelligence</div>
-    <h1>Your docs,<br/><em>instantly searchable</em></h1>
-    <p>Upload PDFs and ask questions in plain English. Get precise answers with source citations.</p>
+    <div class="hero-badge">Document Intelligence</div>
+    <h1>Your documents,<br/><em>instantly searchable</em></h1>
+    <p>Upload documents and ask questions in plain English. Get precise answers with source citations and page references.</p>
     <div class="hero-stats">
       <div class="hero-stat">
         <strong id="stat-docs">0</strong>
-        <span>documents</span>
+        <span>Documents</span>
       </div>
       <div class="hero-stat">
         <strong id="stat-pages">0</strong>
-        <span>pages indexed</span>
+        <span>Pages</span>
       </div>
       <div class="hero-stat">
         <strong id="stat-chunks">0</strong>
-        <span>chunks stored</span>
+        <span>Chunks</span>
       </div>
     </div>
   </div>
 
-  <div class="index-grid">
-    <!-- Upload Panel -->
-    <div class="panel">
-      <div class="panel-title">
-        <div class="panel-title-icon">⬆</div>
-        Upload Documents
+  <div class="grid-2">
+    <!-- Upload -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-round accent">↑</div>
+        <h3>Upload</h3>
       </div>
-      <div class="panel-body">
+      <div class="card-body">
         <div class="upload-zone" id="uploadZone">
           <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" multiple />
-          <div class="upload-icon">📎</div>
-          <h3>Drop files here or click to browse</h3>
-          <p>PDF · DOCX · TXT · Markdown · Multiple files supported</p>
+          <div class="upload-icon-large">+</div>
+          <h3>Drop files or click to browse</h3>
+          <p>PDF, DOCX, TXT, Markdown — multiple files supported</p>
         </div>
         <div class="upload-progress" id="uploadProgress">
           <div class="upload-status-text" id="uploadStatus">Processing...</div>
@@ -64,17 +64,20 @@
       </div>
     </div>
 
-    <!-- Documents Panel -->
-    <div class="panel">
-      <div class="panel-title">
-        <div class="panel-title-icon">📚</div>
-        Library
-        <span style="margin-left:auto; font-size:0.7rem; font-weight:400; color:var(--text-3);">Persisted until removed</span>
+    <!-- Library -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon-round">📚</div>
+        <h3>Library</h3>
+        <span style="margin-left:auto; font-size:0.7rem; color:var(--text-tertiary);">Persisted until removed</span>
       </div>
-      <div id="docList">
-        <div class="empty-state">
-          <div class="empty-state-icon">📭</div>
-          <p>No documents yet.<br/>Upload PDFs to get started.</p>
+      <div class="card-body" style="padding:0;">
+        <div id="docList" style="padding:16px 20px;">
+          <div class="empty-state">
+            <div class="empty-state-icon">+</div>
+            <h4>No documents yet</h4>
+            <p>Upload PDFs, DOCX, TXT, or Markdown files to get started.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -85,7 +88,6 @@
 
 <script src="/static/app.js"></script>
 <script>
-  // Theme
   (function() {
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
@@ -110,13 +112,12 @@
   fileInput.addEventListener('change', () => handleFiles([...fileInput.files]));
 
   async function handleFiles(files) {
-      const valid = files.filter(f => f.name.match(/\.(pdf|docx|txt|md)$/i));
-      if (!valid.length) { showToast('Supported: PDF, DOCX, TXT, MD.', 'error'); return; }
+    const valid = files.filter(f => f.name.match(/\.(pdf|docx|txt|md)$/i));
+    if (!valid.length) { showToast('Supported: PDF, DOCX, TXT, MD.', 'error'); return; }
 
     const progressEl = document.getElementById('uploadProgress');
     const statusEl = document.getElementById('uploadStatus');
     const progressBar = document.getElementById('progressBar');
-
     progressEl.style.display = 'block';
 
     for (let i = 0; i < valid.length; i++) {
@@ -126,14 +127,12 @@
 
       const fd = new FormData();
       fd.append('file', file);
-
       try {
         const res = await fetch('/api/upload', { method: 'POST', body: fd });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Upload failed');
         showToast(`${file.name} — processing...`, 'info');
 
-        // Poll until ingestion complete
         if (data.status === 'processing') {
           let attempts = 0;
           while (attempts < 60) {
@@ -144,22 +143,17 @@
               showToast(`${file.name} — ${sd.chunk_count} chunks indexed`, 'success');
               break;
             }
-            if (sd.status === 'error') {
-              showToast(`${file.name} — ingestion failed`, 'error');
-              break;
-            }
+            if (sd.status === 'error') { showToast(`${file.name} — ingestion failed`, 'error'); break; }
             attempts++;
             statusEl.textContent = `Processing ${file.name}...`;
           }
         }
-      } catch (err) {
-        showToast(`${file.name}: ${err.message}`, 'error');
-      }
+      } catch (err) { showToast(`${file.name}: ${err.message}`, 'error'); }
     }
 
     progressBar.style.width = '100%';
-    statusEl.textContent = 'Done!';
-    setTimeout(() => { progressEl.style.display = 'none'; progressBar.style.width = '0%'; }, 1500);
+    statusEl.textContent = 'Complete';
+    setTimeout(() => { progressEl.style.display = 'none'; progressBar.style.width = '0%'; }, 2000);
     fileInput.value = '';
     await refreshDocs();
   }
@@ -184,7 +178,7 @@
   function renderDocList(docs) {
     const container = document.getElementById('docList');
     if (!docs.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><p>No documents yet.<br/>Upload PDFs to get started.</p></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">+</div><h4>No documents yet</h4><p>Upload PDFs, DOCX, TXT, or Markdown files to get started.</p></div>`;
       return;
     }
     container.innerHTML = '<div class="doc-list">' + docs.map(doc => `
@@ -195,8 +189,8 @@
           <div class="doc-meta">${doc.page_count}p · ${doc.chunk_count} chunks</div>
         </div>
         <div class="doc-actions">
-          <button class="doc-action-btn" title="Download PDF" onclick="downloadDoc('${doc.doc_id}', 'pdf')">↓</button>
-          <button class="doc-action-btn" title="Download Text" onclick="downloadDoc('${doc.doc_id}', 'txt')">txt</button>
+          <button class="doc-action-btn" title="Download" onclick="downloadDoc('${doc.doc_id}', 'pdf')">↓</button>
+          <button class="doc-action-btn" title="Download Text" onclick="downloadDoc('${doc.doc_id}', 'txt')">T</button>
           <button class="doc-action-btn delete" title="Remove" onclick="removeDoc('${doc.doc_id}')">✕</button>
         </div>
       </div>
