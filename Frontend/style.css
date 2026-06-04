@@ -374,7 +374,24 @@ body::before {
 .upload-zone p { font-size: 0.8125rem; color: var(--text-tertiary); font-weight: 400; }
 
 .upload-progress { margin-top: 18px; display: none; }
-.upload-status-text { font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 10px; font-weight: 500; }
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.upload-status-text {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.upload-percent {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
 .progress-bar-wrap { height: 4px; background: var(--bg-hover); border-radius: 2px; overflow: hidden; }
 .progress-bar {
   height: 100%;
@@ -382,6 +399,11 @@ body::before {
   border-radius: 2px;
   width: 0%;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* ── Document List ──────────────────────────────────────── */
