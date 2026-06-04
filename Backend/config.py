@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).parent.parent  # Backend's parent = project root
 load_dotenv(PROJECT_ROOT / ".env")
 
-# Auto-detect: Vercel uses /tmp, local uses Backend directory
-if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
+# Auto-detect: Vercel, Render, and other cloud platforms use /tmp
+# Local uses Backend directory
+if os.getenv("VERCEL") or os.getenv("VERCEL_ENV") or os.getenv("RENDER"):
     BASE_DIR = Path("/tmp")
 else:
     BASE_DIR = Path(__file__).parent

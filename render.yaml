@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: askyourdocs
+    env: python
+    runtime: python-3.12.10
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd Backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: OPENCODE_API_KEY
+        sync: false
+      - key: RENDER
+        value: "1"
+      - key: PYTHON_VERSION
+        value: "3.12.10"
