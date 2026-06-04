@@ -10,3 +10,4 @@ aiofiles==23.2.1
 openai
 scipy==1.13.1
 sentence-transformers
+PyJWT

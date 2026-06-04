@@ -4,7 +4,8 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, BackgroundTasks, Depends, Header
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -15,13 +16,14 @@ from rag.ingest import ingest_document, delete_document
 from utils.doc_loader import get_supported_extensions, SUPPORTED_EXTENSIONS
 from rag.pipeline import run_rag_pipeline
 from rag.llm import generate_answer
+from auth import hash_password, verify_password, create_access_token, decode_access_token
 from db import (
     add_document as db_add_doc, get_all_documents, get_document,
     delete_document_db, set_ingestion_status, create_chat, get_all_chats, get_chat,
     update_chat_title, delete_chat, get_chat_documents, add_message, get_messages,
     clear_messages, add_feedback, create_collection, get_all_collections,
     add_doc_to_collection, remove_doc_from_collection, get_collection_documents,
-    delete_collection,
+    delete_collection, create_user, get_user_by_email, get_user_by_id,
 )
 
 app = FastAPI(title="AskYourDocs API", version="2.0.0")
@@ -476,3 +478,48 @@ async def list_prompts():
 async def health():
     docs = get_all_documents()
     return {"status": "ok", "documents_loaded": len(docs), "model": LLM_MODEL}
+
+
+# ── Auth (optional) ──────────────────────────────────────────────────────────
+
+def get_current_user(authorization: str = Header(None)) -> dict | None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.replace("Bearer ", "")
+    user_id = decode_access_token(token)
+    if not user_id:
+        return None
+    return get_user_by_id(user_id)
+
+
+class AuthRequest(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/auth/signup")
+async def signup(req: AuthRequest):
+    existing = get_user_by_email(req.email)
+    if existing:
+        raise HTTPException(400, "Email already registered.")
+    user_id = str(uuid.uuid4())[:8]
+    pw_hash, salt = hash_password(req.password)
+    create_user(user_id, req.email, pw_hash, salt)
+    token = create_access_token(user_id)
+    return {"token": token, "user_id": user_id, "email": req.email}
+
+
+@app.post("/api/auth/login")
+async def login(req: AuthRequest):
+    user = get_user_by_email(req.email)
+    if not user or not verify_password(req.password, user["salt"], user["password_hash"]):
+        raise HTTPException(401, "Invalid email or password.")
+    token = create_access_token(user["user_id"])
+    return {"token": token, "user_id": user["user_id"], "email": user["email"]}
+
+
+@app.get("/api/auth/me")
+async def me(user: dict | None = Depends(get_current_user)):
+    if not user:
+        raise HTTPException(401, "Not authenticated.")
+    return {"user_id": user["user_id"], "email": user["email"]}

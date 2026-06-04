@@ -64,6 +64,14 @@ def init_db():
             FOREIGN KEY (col_id) REFERENCES collections(col_id) ON DELETE CASCADE,
             FOREIGN KEY (doc_id) REFERENCES documents(doc_id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS users (
+            user_id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     # Add ingestion_status column if missing (safe migration)
     try:
@@ -246,6 +254,32 @@ def delete_collection(col_id: str):
 
 # Auto-init on import
 init_db()
+
+
+# ── User operations ──
+
+def create_user(user_id: str, email: str, password_hash: str, salt: str):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO users (user_id, email, password_hash, salt) VALUES (?, ?, ?, ?)",
+        (user_id, email, password_hash, salt)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_user_by_email(email: str) -> dict | None:
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_user_by_id(user_id: str) -> dict | None:
+    conn = get_db()
+    row = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 # ── Feedback operations ──

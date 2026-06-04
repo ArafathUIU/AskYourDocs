@@ -67,3 +67,31 @@ def test_upload_invalid_file():
 def test_document_not_found():
     r = client.delete("/api/documents/nonexistent")
     assert r.status_code == 404
+
+
+def test_signup_and_login():
+    email = f"test-{__import__('uuid').uuid4().hex[:6]}@test.com"
+
+    # Signup
+    r = client.post("/api/auth/signup", json={"email": email, "password": "testpass123"})
+    assert r.status_code == 200
+    token = r.json()["token"]
+    assert token
+
+    # Login
+    r = client.post("/api/auth/login", json={"email": email, "password": "testpass123"})
+    assert r.status_code == 200
+    assert r.json()["token"]
+
+    # Auth'd me
+    r = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json()["email"] == email
+
+    # Unauthenticated me
+    r = client.get("/api/auth/me")
+    assert r.status_code == 401
+
+    # Bad password
+    r = client.post("/api/auth/login", json={"email": email, "password": "wrong"})
+    assert r.status_code == 401
