@@ -2,16 +2,19 @@ import json
 import numpy as np
 from pathlib import Path
 
-from config import TEXTS_DIR, INDEXES_DIR
+from config import TEXTS_DIR, INDEXES_DIR, ENABLE_ML
 
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 
 _embedding_model = None
 _embedding_error = None
+_embedding_disabled = not ENABLE_ML
 
 
 def get_embedding_model():
-    global _embedding_model, _embedding_error
+    global _embedding_model, _embedding_error, _embedding_disabled
+    if _embedding_disabled:
+        raise RuntimeError("Embeddings disabled in low-memory mode")
     if _embedding_model is None and _embedding_error is None:
         try:
             from sentence_transformers import SentenceTransformer
@@ -34,6 +37,9 @@ def embed_query(query: str) -> np.ndarray:
 
 
 def build_embedding_index(doc_id: str):
+    if not ENABLE_ML:
+        return
+
     chunks_path = TEXTS_DIR / f"{doc_id}.json"
     if not chunks_path.exists():
         raise FileNotFoundError(f"Chunks not found for doc_id: {doc_id}")
