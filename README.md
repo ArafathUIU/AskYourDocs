@@ -14,27 +14,6 @@ AskYourDocs lets you upload any PDF and have a conversation with it. Instead of 
 - Technical reports and whitepapers
 
 ---
-
-## Screenshots
-
-### Documents Page
-Upload PDFs and manage your library. Stats update live as documents are ingested.
-
-![Documents page](docs/screenshots/landing.png)
-
-![Select Your PDF](docs/screenshots/DocSelect.png)
-
-### Chat Page
-Ask questions across one or multiple documents. Answers include source chips showing which document and page each claim came from.
-
-![Chat page](docs/screenshots/chat(1).png)
-![Chat page](docs/screenshots/chat(2).png)
-![Chat page](docs/screenshots/chat(3).png)
-![Chat page](docs/screenshots/chat(4).png)
-
-
----
-
 ## Features
 
 - **PDF upload** — drag & drop or click to browse, multiple files supported
