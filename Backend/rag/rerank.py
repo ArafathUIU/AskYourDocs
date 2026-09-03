@@ -24,8 +24,9 @@ def get_reranker():
 def rerank_chunks(query: str, chunks: list[dict], top_k: int = 6) -> list[dict]:
     if not chunks:
         return []
-    if len(chunks) <= top_k:
+    if len(chunks) == 1:
         return chunks
+
 
     try:
         reranker = get_reranker()
