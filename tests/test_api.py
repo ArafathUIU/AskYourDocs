@@ -19,7 +19,10 @@ def test_list_documents_empty():
 def test_list_models():
     r = client.get("/api/models")
     assert r.status_code == 200
-    assert len(r.json()["models"]) > 0
+    models = r.json()["models"]
+    assert len(models) > 0
+    assert any(m["id"] == "llama-3.3-70b-versatile" for m in models)
+    assert all(m["provider"] == "Groq" for m in models)
 
 
 def test_list_chats():
@@ -95,3 +98,22 @@ def test_signup_and_login():
     # Bad password
     r = client.post("/api/auth/login", json={"email": email, "password": "wrong"})
     assert r.status_code == 401
+
+
+def test_rag_pipeline_helpers():
+    from rag.pipeline import process_pipeline_chunks
+    from rag.rerank import rerank_chunks
+
+    # Test process_pipeline_chunks with empty doc_ids
+    chunks, count = process_pipeline_chunks("query", [])
+    assert chunks == []
+    assert count >= 1
+
+    # Test rerank_chunks with small list
+    sample_chunks = [
+        {"text": "Chunk 1", "score": 0.5},
+        {"text": "Chunk 2", "score": 0.8},
+    ]
+    reranked = rerank_chunks("test query", sample_chunks, top_k=6)
+    assert len(reranked) == 2
+
