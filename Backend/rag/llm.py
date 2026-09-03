@@ -1,7 +1,7 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from config import OPENCODE_API_KEY, OPENCODE_BASE_URL, LLM_MODEL
+from config import GROQ_API_KEY, GROQ_BASE_URL, LLM_MODEL
 
 load_dotenv()
 
@@ -11,9 +11,11 @@ _client = None
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        api_key = OPENCODE_API_KEY or os.getenv("OPENCODE_API_KEY", "")
-        _client = OpenAI(api_key=api_key, base_url=OPENCODE_BASE_URL)
+        api_key = GROQ_API_KEY or os.getenv("GROQ_API_KEY", "") or os.getenv("OPENAI_API_KEY", "")
+        base_url = GROQ_BASE_URL or os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+        _client = OpenAI(api_key=api_key or "gsk_placeholder", base_url=base_url)
     return _client
+
 
 
 def generate_answer(

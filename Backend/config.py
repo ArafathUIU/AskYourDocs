@@ -21,15 +21,10 @@ for d in [DOCS_DIR, INDEXES_DIR, TEXTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # API key & provider
-OPENCODE_API_KEY = os.getenv("OPENCODE_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENCODE_API_KEY", "")
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
 
-# Auto-detect endpoint: OpenAI keys (sk-proj-*) use OpenAI, rest use OpenCode Go
-if OPENCODE_API_KEY.startswith("sk-proj-"):
-    OPENCODE_BASE_URL = "https://api.openai.com/v1"
-    LLM_MODEL = "gpt-4o-mini"
-else:
-    OPENCODE_BASE_URL = "https://opencode.ai/zen/go/v1"
-    LLM_MODEL = "deepseek-v4-pro"
 
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 150
