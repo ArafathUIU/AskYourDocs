@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AskYourDocs — Document Intelligence</title>
+  <title>AskYourDocs — Intelligent Document Search & RAG</title>
+  <meta name="description" content="Turn your PDFs, DOCX, TXT, and Markdown files into instant answers with precise citations powered by Groq." />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
@@ -16,17 +17,21 @@
     </a>
     <nav class="nav-links">
       <a href="/" class="nav-btn active">Documents</a>
-      <a href="/chat-page" class="nav-btn primary">Chat</a>
+      <a href="/chat-page" class="nav-btn primary">Chat ↗</a>
       <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">◐</button>
     </nav>
   </div>
 </header>
 
 <div class="container page-padding">
-  <div class="hero">
-    <div class="hero-badge">Document Intelligence</div>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="pulse-dot"></span>
+      Groq Free Inference Engine
+    </div>
     <h1>Your documents,<br/><em>instantly searchable</em></h1>
-    <p>Upload documents and ask questions in plain English. Get precise answers with source citations and page references.</p>
+    <p>Upload PDFs, DOCX, TXT, or Markdown documents and ask anything. Retrieve exact passages with verified page citations and deep semantic search.</p>
     <div class="hero-stats">
       <div class="hero-stat">
         <strong id="stat-docs">0</strong>
@@ -41,58 +46,65 @@
         <span>Chunks</span>
       </div>
     </div>
-  </div>
+  </section>
 
   <!-- How it works -->
-  <div class="how-it-works">
+  <section class="how-it-works">
     <div class="hiw-header">
-      <span class="hiw-label">How it works</span>
-      <h2>Three simple steps</h2>
+      <span class="hiw-label">Architecture</span>
+      <h2>Three Simple Steps to Answers</h2>
     </div>
     <div class="hiw-steps">
       <div class="hiw-step">
-        <div class="hiw-step-number">1</div>
+        <div class="hiw-step-number">01</div>
         <div class="hiw-step-icon-wrap">
           <div class="hiw-step-icon">↑</div>
         </div>
-        <h4>Upload</h4>
-        <p>Drop PDF, DOCX, TXT, or Markdown files. We extract text, split into chunks, and index everything automatically.</p>
+        <h4>Ingest & Index</h4>
+        <p>Drop PDF, DOCX, TXT, or Markdown files. Text is chunked with semantic overlap and indexed for hybrid search.</p>
       </div>
       <div class="hiw-arrow">→</div>
       <div class="hiw-step">
-        <div class="hiw-step-number">2</div>
+        <div class="hiw-step-number">02</div>
         <div class="hiw-step-icon-wrap">
-          <div class="hiw-step-icon">?</div>
+          <div class="hiw-step-icon">⚡</div>
         </div>
-        <h4>Ask</h4>
-        <p>Type your question in natural language. Our hybrid search engine finds the most relevant passages across all your documents.</p>
+        <h4>Hybrid Retrieval</h4>
+        <p>Queries are expanded and matched across documents using combined TF-IDF lexical search and cross-encoder re-ranking.</p>
       </div>
       <div class="hiw-arrow">→</div>
       <div class="hiw-step">
-        <div class="hiw-step-number">3</div>
+        <div class="hiw-step-number">03</div>
         <div class="hiw-step-icon-wrap">
           <div class="hiw-step-icon">✦</div>
         </div>
-        <h4>Get Answers</h4>
-        <p>Receive precise, cited answers with inline source references and page numbers. Every claim is traceable back to your documents.</p>
+        <h4>Groq Generation</h4>
+        <p>Ultra-low-latency Llama 3.3 generation streams answers with inline page citations directly traceable to sources.</p>
       </div>
     </div>
-  </div>
+  </section>
 
   <div class="grid-2">
-    <!-- Upload -->
+    <!-- Upload Card -->
     <div class="card">
       <div class="card-header">
         <div class="icon-round accent">↑</div>
-        <h3>Upload</h3>
+        <h3>Upload Documents</h3>
       </div>
       <div class="card-body">
         <div class="upload-zone" id="uploadZone">
           <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" multiple />
           <div class="upload-icon-large">+</div>
-          <h3>Drop files or click to browse</h3>
-          <p>PDF, DOCX, TXT, Markdown — multiple files supported</p>
+          <h3>Drop files here or click to browse</h3>
+          <p>Drag multiple files to process and index automatically</p>
+          <div class="format-badges">
+            <span class="format-badge pdf">PDF</span>
+            <span class="format-badge docx">DOCX</span>
+            <span class="format-badge txt">TXT</span>
+            <span class="format-badge md">MARKDOWN</span>
+          </div>
         </div>
+
         <div class="upload-progress" id="uploadProgress">
           <div class="progress-header">
             <span class="upload-status-text" id="uploadStatus">Uploading...</span>
@@ -105,19 +117,25 @@
       </div>
     </div>
 
-    <!-- Library -->
+    <!-- Document Library Card -->
     <div class="card">
       <div class="card-header">
         <div class="icon-round">📚</div>
-        <h3>Library</h3>
-        <span style="margin-left:auto; font-size:0.7rem; color:var(--text-tertiary);">Persisted until removed</span>
+        <h3>Document Library</h3>
+        <a href="/chat-page" class="btn primary" style="margin-left:auto; padding: 6px 12px; font-size: 0.78rem;">Open Chat →</a>
       </div>
+
+      <div class="doc-search-bar">
+        <span style="color: var(--text-tertiary); font-size: 0.9rem;">🔍</span>
+        <input type="text" id="docSearchInput" class="search-input" placeholder="Filter documents by name..." oninput="filterDocs()" />
+      </div>
+
       <div class="card-body" style="padding:0;">
-        <div id="docList" style="padding:16px 20px;">
+        <div id="docList" class="doc-list">
           <div class="empty-state">
             <div class="empty-state-icon">+</div>
-            <h4>No documents yet</h4>
-            <p>Upload PDFs, DOCX, TXT, or Markdown files to get started.</p>
+            <h4>No documents indexed yet</h4>
+            <p>Upload files on the left to start building your knowledge base.</p>
           </div>
         </div>
       </div>
@@ -133,6 +151,7 @@
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
   })();
+
   function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
@@ -140,10 +159,15 @@
     localStorage.setItem('theme', next);
   }
 
+  let loadedDocuments = [];
+
   const fileInput = document.getElementById('fileInput');
   const uploadZone = document.getElementById('uploadZone');
 
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    uploadZone.classList.add('drag-over');
+  });
   uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
   uploadZone.addEventListener('drop', e => {
     e.preventDefault();
@@ -154,7 +178,10 @@
 
   async function handleFiles(files) {
     const valid = files.filter(f => f.name.match(/\.(pdf|docx|txt|md)$/i));
-    if (!valid.length) { showToast('Supported: PDF, DOCX, TXT, MD.', 'error'); return; }
+    if (!valid.length) {
+      showToast('Supported formats: PDF, DOCX, TXT, MD.', 'error');
+      return;
+    }
 
     const progressEl = document.getElementById('uploadProgress');
     const statusEl = document.getElementById('uploadStatus');
@@ -165,15 +192,13 @@
 
     for (let i = 0; i < valid.length; i++) {
       const file = valid[i];
-      statusEl.textContent = `${file.name}`;
+      statusEl.textContent = `Uploading ${file.name}`;
       percentEl.textContent = '0%';
       progressBar.style.width = '0%';
 
-      // Upload with progress tracking
       const data = await uploadFileWithProgress(file, (pct) => {
         percentEl.textContent = `${Math.round(pct)}%`;
         progressBar.style.width = pct + '%';
-        statusEl.textContent = `Uploading ${file.name}`;
       });
 
       if (!data) {
@@ -182,52 +207,49 @@
       }
 
       if (data.status === 'processing') {
-        statusEl.textContent = `Processing ${file.name}`;
-        percentEl.textContent = '⌛';
+        statusEl.textContent = `Indexing ${file.name}...`;
+        percentEl.textContent = '⚡';
         progressBar.style.width = '100%';
-        // Animate the bar during processing
-        progressBar.style.animation = 'pulse 1.5s ease-in-out infinite';
 
         let attempts = 0;
         while (attempts < 90) {
-          await new Promise(r => setTimeout(r, 2000));
+          await new Promise(r => setTimeout(r, 1800));
           try {
             const sr = await fetch(`/api/documents/${data.doc_id}/status`);
             const sd = await sr.json();
             if (sd.chunk_count > 0 || sd.status === 'ready') {
-              progressBar.style.animation = '';
-              progressBar.style.width = '100%';
               percentEl.textContent = '✓';
-              statusEl.textContent = `${file.name} — ${sd.chunk_count} chunks indexed`;
-              showToast(`${file.name} — ${sd.chunk_count} chunks indexed`, 'success');
+              statusEl.textContent = `Indexed ${file.name} (${sd.chunk_count} chunks)`;
+              showToast(`Indexed ${file.name} (${sd.chunk_count} chunks)`, 'success');
               break;
             }
             if (sd.status === 'error') {
-              progressBar.style.animation = '';
-              progressBar.style.width = '100%';
               percentEl.textContent = '✗';
-              statusEl.textContent = `${file.name} — ingestion failed`;
-              showToast(`${file.name} — ingestion failed`, 'error');
+              statusEl.textContent = `Ingestion failed for ${file.name}`;
+              showToast(`Ingestion failed for ${file.name}`, 'error');
               break;
             }
           } catch {}
           attempts++;
         }
-        progressBar.style.animation = '';
       } else {
         percentEl.textContent = '100%';
         progressBar.style.width = '100%';
-        statusEl.textContent = `Complete — ${data.name}`;
+        statusEl.textContent = `Indexed — ${data.name}`;
       }
     }
 
-    setTimeout(() => { progressEl.style.display = 'none'; progressBar.style.width = '0%'; progressBar.style.animation = ''; }, 2500);
+    setTimeout(() => {
+      progressEl.style.display = 'none';
+      progressBar.style.width = '0%';
+    }, 2200);
+
     fileInput.value = '';
     await refreshDocs();
   }
 
   function uploadFileWithProgress(file, onProgress) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       const fd = new FormData();
       fd.append('file', file);
@@ -258,9 +280,9 @@
   }
 
   async function refreshDocs() {
-    const docs = await fetchDocs();
-    renderDocList(docs);
-    updateStats(docs);
+    loadedDocuments = await fetchDocs();
+    renderDocList(loadedDocuments);
+    updateStats(loadedDocuments);
   }
 
   function updateStats(docs) {
@@ -269,46 +291,76 @@
     document.getElementById('stat-chunks').textContent = docs.reduce((a, d) => a + (d.chunk_count || 0), 0);
   }
 
-  function getDocIcon(name) {
-    const ext = (name || '').split('.').pop().toLowerCase();
-    return { pdf: 'PDF', docx: 'DOCX', txt: 'TXT', md: 'MD' }[ext] || 'DOC';
+  function filterDocs() {
+    const q = document.getElementById('docSearchInput').value.toLowerCase().trim();
+    if (!q) {
+      renderDocList(loadedDocuments);
+      return;
+    }
+    const filtered = loadedDocuments.filter(d => (d.name || '').toLowerCase().includes(q));
+    renderDocList(filtered);
   }
 
   function renderDocList(docs) {
     const container = document.getElementById('docList');
     if (!docs.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">+</div><h4>No documents yet</h4><p>Upload PDFs, DOCX, TXT, or Markdown files to get started.</p></div>`;
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📄</div>
+          <h4>No documents found</h4>
+          <p>Upload documents or clear the search query filter.</p>
+        </div>
+      `;
       return;
     }
-    container.innerHTML = '<div class="doc-list">' + docs.map(doc => `
-      <div class="doc-card" data-id="${doc.doc_id}">
-        <div class="doc-icon">${getDocIcon(doc.name)}</div>
-        <div class="doc-info">
-          <div class="doc-name">${escHtml(doc.name)}</div>
-          <div class="doc-meta">${doc.page_count}p · ${doc.chunk_count} chunks</div>
+
+    container.innerHTML = docs.map(doc => {
+      const ext = (doc.name || '').split('.').pop().toLowerCase();
+      const iconClass = ['pdf', 'docx', 'txt', 'md'].includes(ext) ? ext : 'pdf';
+      return `
+        <div class="doc-card" data-id="${doc.doc_id}">
+          <div class="doc-icon ${iconClass}">${iconClass.toUpperCase()}</div>
+          <div class="doc-info">
+            <div class="doc-name" title="${escHtml(doc.name)}">${escHtml(doc.name)}</div>
+            <div class="doc-meta">
+              <span>${doc.page_count || 1} pages</span>
+              <span>•</span>
+              <span>${doc.chunk_count || 0} chunks</span>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <button class="doc-action-btn" title="Preview document" onclick="openViewer('${doc.doc_id}')">👁</button>
+            <button class="doc-action-btn" title="Download original" onclick="downloadDoc('${doc.doc_id}', 'original')">↓</button>
+            <button class="doc-action-btn" title="Download text" onclick="downloadDoc('${doc.doc_id}', 'txt')">T</button>
+            <button class="doc-action-btn delete" title="Delete document" onclick="removeDoc('${doc.doc_id}', '${escHtml(doc.name)}')">✕</button>
+          </div>
         </div>
-        <div class="doc-actions">
-          <button class="doc-action-btn" title="Download" onclick="downloadDoc('${doc.doc_id}', 'pdf')">↓</button>
-          <button class="doc-action-btn" title="Download Text" onclick="downloadDoc('${doc.doc_id}', 'txt')">T</button>
-          <button class="doc-action-btn delete" title="Remove" onclick="removeDoc('${doc.doc_id}')">✕</button>
-        </div>
-      </div>
-    `).join('') + '</div>';
+      `;
+    }).join('');
   }
 
-  async function removeDoc(docId) {
-    if (!confirm('Remove this document permanently?')) return;
+  function openViewer(docId) {
+    window.open(`/viewer?doc=${docId}&page=1`, '_blank');
+  }
+
+  async function removeDoc(docId, docName) {
+    if (!confirm(`Permanently remove "${docName}" from the library?`)) return;
     try {
       const res = await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Remove failed');
-      showToast('Document removed.', 'success');
+      if (!res.ok) throw new Error('Failed to delete document');
+      showToast(`Removed "${docName}"`, 'success');
       await refreshDocs();
-    } catch (e) { showToast(e.message, 'error'); }
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
   }
 
   function downloadDoc(docId, type) {
-    if (type === 'pdf') window.open(`/api/documents/${docId}/download`, '_blank');
-    else window.open(`/api/documents/${docId}/text?format=txt`, '_blank');
+    if (type === 'original') {
+      window.open(`/api/documents/${docId}/download`, '_blank');
+    } else {
+      window.open(`/api/documents/${docId}/text?format=txt`, '_blank');
+    }
   }
 
   refreshDocs();
