@@ -37,9 +37,21 @@ app.add_middleware(
 )
 
 # Serve frontend
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "traceback": traceback.format_exc()}
+    )
+
 FRONTEND_DIR = PROJECT_ROOT / "Frontend"
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
 
 
 # ── Frontend Routes ──────────────────────────────────────────────────────────
@@ -324,10 +336,17 @@ async def chat_stream(request: ChatRequest):
 
     chunks = retrieve_chunks(request.query, request.doc_ids)
 
+    sse_headers = {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+        "Content-Type": "text/event-stream; charset=utf-8",
+    }
+
     if not chunks:
         async def empty_stream():
-            yield f"data: {json.dumps({'error': 'No relevant content found.'})}\n\n"
-        return StreamingResponse(empty_stream(), media_type="text/event-stream")
+            yield f"data: {json.dumps({'error': 'No relevant content found in the selected documents.'})}\n\n"
+        return StreamingResponse(empty_stream(), media_type="text/event-stream", headers=sse_headers)
 
     try:
         result = generate_answer(
@@ -341,7 +360,7 @@ async def chat_stream(request: ChatRequest):
     except Exception as e:
         async def error_stream():
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
-        return StreamingResponse(error_stream(), media_type="text/event-stream")
+        return StreamingResponse(error_stream(), media_type="text/event-stream", headers=sse_headers)
 
     stream = result["stream"]
     sources = result["sources"]
@@ -357,7 +376,8 @@ async def chat_stream(request: ChatRequest):
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-    return StreamingResponse(token_stream(), media_type="text/event-stream")
+    return StreamingResponse(token_stream(), media_type="text/event-stream", headers=sse_headers)
+
 
 
 

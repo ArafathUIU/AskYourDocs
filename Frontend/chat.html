@@ -428,10 +428,14 @@
         document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
       }
 
+      if (!fullText.trim() && !bubble.innerHTML.includes('Error:')) {
+        bubble.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">⚠️ No response received from server. Please verify your Groq API key in the Render environment variables or try again.</span>`;
+      }
     } catch (err) {
       removeTyping(typingId);
       appendMessage('assistant', `⚠️ ${err.message}`);
     }
+
     document.getElementById('sendBtn').disabled = false;
     isStreaming = false;
   }
