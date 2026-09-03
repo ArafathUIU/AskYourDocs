@@ -320,9 +320,9 @@ async def chat_stream(request: ChatRequest):
 
     doc_names = {doc_id: docs[doc_id]["name"] for doc_id in request.doc_ids}
 
-    from rag.pipeline import process_pipeline_chunks
+    from rag.retrieve import retrieve_chunks
 
-    chunks, _ = process_pipeline_chunks(request.query, request.doc_ids)
+    chunks = retrieve_chunks(request.query, request.doc_ids)
 
     if not chunks:
         async def empty_stream():
@@ -349,14 +349,16 @@ async def chat_stream(request: ChatRequest):
     async def token_stream():
         try:
             for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    token = chunk.choices[0].delta.content
-                    yield f"data: {json.dumps({'token': token})}\n\n"
+                if chunk.choices and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+                    if delta and delta.content:
+                        yield f"data: {json.dumps({'token': delta.content})}\n\n"
             yield f"data: {json.dumps({'sources': sources, 'done': True})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(token_stream(), media_type="text/event-stream")
+
 
 
 

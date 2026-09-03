@@ -32,5 +32,6 @@ CHUNK_OVERLAP = 150
 TOP_K_CHUNKS = 6
 MAX_TOKENS = 2048
 
-# Disable heavy ML models on low-memory environments (Render free tier: 512MB)
-ENABLE_ML = not (os.getenv("RENDER") == "1" or os.getenv("LOW_MEMORY") == "1")
+# Default to instant, zero-latency TF-IDF search; enable heavy PyTorch/HF models only if ENABLE_ML=1
+ENABLE_ML = os.getenv("ENABLE_ML", "0") == "1"
+
