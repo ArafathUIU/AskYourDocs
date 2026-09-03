@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AskYourDocs — Chat</title>
+  <title>AskYourDocs — Conversational Intelligence</title>
+  <meta name="description" content="Chat with your documents using Groq-accelerated RAG pipeline and verified citations." />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
@@ -23,75 +24,88 @@
 </header>
 
 <div class="chat-layout">
-  <!-- Chats sidebar -->
+  <!-- Conversations Sidebar -->
   <aside class="chat-list-sidebar" id="chatListSidebar">
     <div class="sidebar-header">
       <h2>Conversations</h2>
     </div>
     <div class="chat-list" id="chatList">
-      <div class="empty-state" style="padding:16px 10px;">
-        <p style="font-size:0.75rem;">No conversations yet.</p>
+      <div class="empty-state" style="padding: 24px 10px;">
+        <p style="font-size: 0.8rem; color: var(--text-tertiary);">No chats yet.</p>
       </div>
     </div>
     <div class="sidebar-actions">
-      <button class="btn" onclick="newChat()" style="width:100%;">+ New Chat</button>
+      <button class="btn primary" onclick="newChat()" style="width: 100%;">+ New Conversation</button>
     </div>
   </aside>
 
-  <!-- Docs sidebar -->
+  <!-- Documents / Context Sidebar -->
   <aside class="chat-sidebar" id="docSidebar">
     <div class="sidebar-header">
-      <h2>Context</h2>
+      <h2>Active Context</h2>
       <div class="context-count" id="contextCount">0 selected</div>
     </div>
+
+    <div class="doc-search-bar" style="padding: 8px 12px;">
+      <span style="font-size: 0.8rem; color: var(--text-tertiary);">🔍</span>
+      <input type="text" id="contextSearch" class="search-input" placeholder="Search context docs..." oninput="filterContextDocs()" />
+    </div>
+
     <div class="sidebar-docs" id="sidebarDocs">
-      <div class="empty-state" style="padding:24px 10px;">
+      <div class="empty-state" style="padding: 24px 10px;">
         <div class="empty-state-icon">+</div>
-        <p style="font-size:0.75rem;">No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none; font-weight:500;">Upload some →</a></p>
+        <p style="font-size: 0.8rem; color: var(--text-tertiary);">
+          No documents available.<br/>
+          <a href="/" style="color: var(--accent); text-decoration: none; font-weight: 600;">Upload files →</a>
+        </p>
       </div>
     </div>
+
     <div class="sidebar-actions">
-      <button class="btn" onclick="selectAllDocs()">All</button>
-      <button class="btn" onclick="clearAllDocs()">None</button>
-      <button class="btn" onclick="clearChat()">Clear</button>
+      <button class="btn" onclick="selectAllDocs()" style="flex: 1;">All</button>
+      <button class="btn" onclick="clearAllDocs()" style="flex: 1;">None</button>
+      <button class="btn" onclick="clearChat()" style="flex: 1;" title="Clear message history">Clear</button>
     </div>
+
     <div class="prompt-library" id="promptLibrary">
-      <div class="sidebar-header"><h2>Quick Prompts</h2></div>
+      <div class="sidebar-header" style="padding: 10px 14px;">
+        <h2 style="font-size: 0.8rem;">Quick Prompts</h2>
+      </div>
       <div class="prompt-list" id="promptList"></div>
     </div>
   </aside>
 
-  <!-- Chat area -->
+  <!-- Chat Main Area -->
   <main class="chat-main">
     <div class="chat-messages" id="chatMessages">
       <div class="chat-welcome" id="chatWelcome">
         <div class="welcome-icon">✦</div>
-        <h2>Ask your documents</h2>
-        <p>Select documents from Context, then ask anything. Answers include source citations with page references.</p>
+        <h2>Chat with your Knowledge Base</h2>
+        <p>Ask questions in plain English. Your query searches all selected documents using Groq ultra-fast inference with precise page citations.</p>
         <div class="sample-questions">
           <button class="sample-q" onclick="useQuestion(this)">Summarize key findings</button>
-          <button class="sample-q" onclick="useQuestion(this)">Main conclusions</button>
-          <button class="sample-q" onclick="useQuestion(this)">All recommendations</button>
-          <button class="sample-q" onclick="useQuestion(this)">What methodology?</button>
-          <button class="sample-q" onclick="useQuestion(this)">Compare sections</button>
+          <button class="sample-q" onclick="useQuestion(this)">Extract main conclusions</button>
+          <button class="sample-q" onclick="useQuestion(this)">List all recommendations</button>
+          <button class="sample-q" onclick="useQuestion(this)">Explain the methodology</button>
+          <button class="sample-q" onclick="useQuestion(this)">Compare sections and points</button>
         </div>
       </div>
     </div>
 
+    <!-- Floating Chat Input Bar -->
     <div class="chat-input-area">
       <div class="chat-input-inner">
-        <div id="noDocsBanner" class="no-docs-banner" style="display:none;">
-          No documents selected — pick documents from the Context panel to start.
+        <div id="noDocsBanner" class="no-docs-banner" style="display: none;">
+          ⚠️ No documents selected. Check at least one document from the Active Context panel to query.
         </div>
         <div class="input-bar">
-          <select id="modelSelect" class="model-select">
-            <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Groq)</option>
-            <option value="llama-3.1-8b-instant">Llama 3.1 8B (Groq)</option>
-            <option value="mixtral-8x7b-32768">Mixtral 8x7B (Groq)</option>
-            <option value="gemma2-9b-it">Gemma 2 9B (Groq)</option>
-            <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B (Groq)</option>
+          <select id="modelSelect" class="model-select" title="Select Groq model">
+            <option value="llama-3.3-70b-versatile">⚡ Llama 3.3 70B (Groq)</option>
+            <option value="llama-3.1-8b-instant">🚀 Llama 3.1 8B (Groq)</option>
+            <option value="mixtral-8x7b-32768">🔮 Mixtral 8x7B (Groq)</option>
+            <option value="gemma2-9b-it">💎 Gemma 2 9B (Groq)</option>
+            <option value="deepseek-r1-distill-llama-70b">🧠 DeepSeek R1 70B (Groq)</option>
           </select>
-
           <div class="input-wrap">
             <textarea
               id="chatInput"
@@ -99,10 +113,10 @@
               placeholder="Ask anything about your documents..."
               rows="1"
             ></textarea>
-            <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send query">↑</button>
           </div>
         </div>
-        <div class="input-hint">↵ Send · ⇧↵ New line · Streaming · Source citations</div>
+        <div class="input-hint">↵ Send • ⇧↵ New line • Live Groq Streaming • Verified Document Citations</div>
       </div>
     </div>
   </main>
@@ -116,6 +130,7 @@
     const saved = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', saved);
   })();
+
   function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
@@ -143,15 +158,15 @@
       const data = await fetchJson('/api/chats');
       const list = document.getElementById('chatList');
       if (!data.chats.length) {
-        list.innerHTML = `<div class="empty-state" style="padding:16px 10px;"><p style="font-size:0.75rem;">No conversations yet.</p></div>`;
+        list.innerHTML = `<div class="empty-state" style="padding: 24px 10px;"><p style="font-size: 0.8rem; color: var(--text-tertiary);">No conversations yet.</p></div>`;
         return;
       }
       list.innerHTML = data.chats.map(c => `
         <div class="chat-list-item ${c.chat_id === currentChatId ? 'active' : ''}" data-id="${c.chat_id}">
-          <div class="chat-list-title" onclick="loadChat('${c.chat_id}')">${escHtml(c.title || 'New Chat')}</div>
-          <div class="chat-list-meta">${c.msg_count || 0}</div>
-          <button class="chat-list-action" title="Export" onclick="event.stopPropagation(); exportChat('${c.chat_id}')">↓</button>
-          <button class="chat-list-delete" title="Delete" onclick="event.stopPropagation(); deleteChatConfirm('${c.chat_id}')">✕</button>
+          <div class="chat-list-title" onclick="loadChat('${c.chat_id}')">${escHtml(c.title || 'New Conversation')}</div>
+          <div class="chat-list-meta">${c.msg_count || 0} msgs</div>
+          <button class="chat-list-action" title="Export Markdown" onclick="event.stopPropagation(); exportChat('${c.chat_id}')">↓</button>
+          <button class="chat-list-delete" title="Delete conversation" onclick="event.stopPropagation(); deleteChatConfirm('${c.chat_id}')">✕</button>
         </div>
       `).join('');
     } catch (e) {}
@@ -162,11 +177,13 @@
       const data = await fetchJson('/api/chats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'New Chat', doc_ids: [...selectedDocIds] }),
+        body: JSON.stringify({ title: 'New Conversation', doc_ids: [...selectedDocIds] }),
       });
       await loadChatList();
       if (load) await loadChat(data.chat_id);
-    } catch (e) { showToast('Failed to create chat', 'error'); }
+    } catch (e) {
+      showToast('Failed to create new conversation', 'error');
+    }
   }
 
   async function loadChat(chatId) {
@@ -179,22 +196,29 @@
       renderDocSidebar(allDocs);
 
       const container = document.getElementById('chatMessages');
-      container.innerHTML = '';
-      data.messages.forEach(m => {
-        const sources = m.sources ? JSON.parse(m.sources) : null;
-        appendMessage(m.role, m.content, sources, false);
-        chatHistory.push({ role: m.role, content: m.content });
-      });
-
       if (!data.messages.length) {
-        const div = document.createElement('div');
-        div.id = 'chatWelcome';
-        div.className = 'chat-welcome';
-        div.innerHTML = `<div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents from Context and ask anything.</p>`;
-        container.appendChild(div);
+        container.innerHTML = `
+          <div class="chat-welcome" id="chatWelcome">
+            <div class="welcome-icon">✦</div>
+            <h2>Chat with your Knowledge Base</h2>
+            <p>Ask questions in plain English with Groq ultra-fast inference and verified citations.</p>
+          </div>
+        `;
+      } else {
+        container.innerHTML = '';
+        data.messages.forEach(m => {
+          let sources = null;
+          if (m.sources) {
+            try { sources = typeof m.sources === 'string' ? JSON.parse(m.sources) : m.sources; } catch {}
+          }
+          appendMessage(m.role, m.content, sources, false);
+          chatHistory.push({ role: m.role, content: m.content });
+        });
       }
       await loadChatList();
-    } catch (e) { showToast('Failed to load chat', 'error'); }
+    } catch (e) {
+      showToast('Failed to load conversation', 'error');
+    }
   }
 
   async function deleteChatConfirm(chatId) {
@@ -204,16 +228,43 @@
       if (currentChatId === chatId) {
         currentChatId = null;
         chatHistory = [];
-        document.getElementById('chatMessages').innerHTML = `<div class="chat-welcome" id="chatWelcome"><div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents and ask anything.</p></div>`;
+        document.getElementById('chatMessages').innerHTML = `
+          <div class="chat-welcome" id="chatWelcome">
+            <div class="welcome-icon">✦</div>
+            <h2>Chat with your Knowledge Base</h2>
+            <p>Select documents and ask anything.</p>
+          </div>
+        `;
       }
       await loadChatList();
-    } catch (e) { showToast('Failed to delete chat', 'error'); }
+      showToast('Conversation deleted', 'success');
+    } catch (e) {
+      showToast('Failed to delete chat', 'error');
+    }
+  }
+
+  function filterContextDocs() {
+    const q = document.getElementById('contextSearch').value.toLowerCase().trim();
+    if (!q) {
+      renderDocSidebar(allDocs);
+      return;
+    }
+    const filtered = allDocs.filter(d => (d.name || '').toLowerCase().includes(q));
+    renderDocSidebar(filtered);
   }
 
   function renderDocSidebar(docs) {
     const container = document.getElementById('sidebarDocs');
     if (!docs.length) {
-      container.innerHTML = `<div class="empty-state" style="padding:24px 10px;"><div class="empty-state-icon">+</div><p style="font-size:0.75rem;">No documents.<br/><a href="/" style="color:var(--accent); text-decoration:none; font-weight:500;">Upload some →</a></p></div>`;
+      container.innerHTML = `
+        <div class="empty-state" style="padding: 24px 10px;">
+          <div class="empty-state-icon">+</div>
+          <p style="font-size: 0.8rem; color: var(--text-tertiary);">
+            No matching documents.<br/>
+            <a href="/" style="color: var(--accent); text-decoration: none; font-weight: 600;">Upload files →</a>
+          </p>
+        </div>
+      `;
       updateContextCount();
       return;
     }
@@ -222,27 +273,56 @@
       return `
         <div class="sidebar-doc-item ${sel ? 'selected' : ''}" onclick="toggleDoc('${doc.doc_id}')" data-id="${doc.doc_id}">
           <div class="sidebar-checkbox ${sel ? 'checked' : ''}">${sel ? '✓' : ''}</div>
-          <div class="sidebar-doc-name">${escHtml(doc.name)}</div>
-          <div class="sidebar-doc-pages">${doc.page_count}p</div>
+          <div class="sidebar-doc-name" title="${escHtml(doc.name)}">${escHtml(doc.name)}</div>
+          <div class="sidebar-doc-pages">${doc.page_count || 1}p</div>
         </div>
       `;
     }).join('');
     updateContextCount();
   }
 
-  function toggleDoc(docId) { if (selectedDocIds.has(docId)) selectedDocIds.delete(docId); else selectedDocIds.add(docId); renderDocSidebar(allDocs); checkNoDocs(); }
-  function selectAllDocs() { allDocs.forEach(d => selectedDocIds.add(d.doc_id)); renderDocSidebar(allDocs); checkNoDocs(); }
-  function clearAllDocs() { selectedDocIds.clear(); renderDocSidebar(allDocs); checkNoDocs(); }
-  function updateContextCount() { document.getElementById('contextCount').textContent = `${selectedDocIds.size} selected`; }
-  function checkNoDocs() { document.getElementById('noDocsBanner').style.display = selectedDocIds.size === 0 ? 'flex' : 'none'; }
-  function useQuestion(btn) { document.getElementById('chatInput').value = btn.textContent; document.getElementById('chatInput').focus(); }
+  function toggleDoc(docId) {
+    if (selectedDocIds.has(docId)) selectedDocIds.delete(docId);
+    else selectedDocIds.add(docId);
+    renderDocSidebar(allDocs);
+    checkNoDocs();
+  }
+
+  function selectAllDocs() {
+    allDocs.forEach(d => selectedDocIds.add(d.doc_id));
+    renderDocSidebar(allDocs);
+    checkNoDocs();
+  }
+
+  function clearAllDocs() {
+    selectedDocIds.clear();
+    renderDocSidebar(allDocs);
+    checkNoDocs();
+  }
+
+  function updateContextCount() {
+    document.getElementById('contextCount').textContent = `${selectedDocIds.size} selected`;
+  }
+
+  function checkNoDocs() {
+    document.getElementById('noDocsBanner').style.display = selectedDocIds.size === 0 ? 'flex' : 'none';
+  }
+
+  function useQuestion(btn) {
+    document.getElementById('chatInput').value = btn.textContent;
+    document.getElementById('chatInput').focus();
+    autoResize(document.getElementById('chatInput'));
+  }
 
   async function sendMessage() {
     if (isStreaming) return;
     const input = document.getElementById('chatInput');
     const query = input.value.trim();
     if (!query) return;
-    if (selectedDocIds.size === 0) { showToast('Select at least one document first.', 'error'); return; }
+    if (selectedDocIds.size === 0) {
+      showToast('Select at least one document from Active Context first.', 'error');
+      return;
+    }
 
     const welcome = document.getElementById('chatWelcome');
     if (welcome) welcome.remove();
@@ -261,7 +341,7 @@
         const data = await fetchJson('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: query.slice(0, 50), doc_ids: [...selectedDocIds] }),
+          body: JSON.stringify({ title: query.slice(0, 48), doc_ids: [...selectedDocIds] }),
         });
         currentChatId = data.chat_id;
         await loadChatList();
@@ -280,12 +360,22 @@
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, doc_ids: [...selectedDocIds], chat_history: chatHistory.slice(-10), model }),
+        body: JSON.stringify({
+          query,
+          doc_ids: [...selectedDocIds],
+          chat_history: chatHistory.slice(-10),
+          model
+        }),
       });
 
       if (!res.ok) {
-        let errMsg = 'Chat failed';
-        try { const err = await res.json(); errMsg = err.detail || errMsg; } catch { errMsg = `Server error (${res.status})`; }
+        let errMsg = 'Chat inference failed';
+        try {
+          const err = await res.json();
+          errMsg = err.detail || errMsg;
+        } catch {
+          errMsg = `Server error (${res.status})`;
+        }
         throw new Error(errMsg);
       }
 
@@ -305,10 +395,15 @@
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.token) { fullText += data.token; bubble.innerHTML = formatMarkdown(fullText); }
-            if (data.sources) { sources = data.sources; }
+            if (data.token) {
+              fullText += data.token;
+              bubble.innerHTML = formatMarkdown(fullText);
+            }
+            if (data.sources) {
+              sources = data.sources;
+            }
             if (data.done) {
-              renderSources(msgId, sources);
+              renderSources(msgId, sources, fullText);
               chatHistory.push({ role: 'assistant', content: fullText });
               if (currentChatId) {
                 fetch(`/api/chats/${currentChatId}/messages`, {
@@ -318,14 +413,16 @@
                 }).catch(() => {});
               }
             }
-            if (data.error) { bubble.innerHTML = `<span class="chat-error">Error: ${escHtml(data.error)}</span>`; }
+            if (data.error) {
+              bubble.innerHTML = `<span style="color: var(--red);">Error: ${escHtml(data.error)}</span>`;
+            }
           } catch {}
         }
         document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
       }
     } catch (err) {
       removeTyping(typingId);
-      appendMessage('assistant', `Error: ${err.message}`);
+      appendMessage('assistant', `⚠️ ${err.message}`);
     }
     document.getElementById('sendBtn').disabled = false;
     isStreaming = false;
@@ -344,13 +441,36 @@
     let sourcesHtml = '';
     if (sources && sources.length) {
       const unique = []; const seen = new Set();
-      sources.forEach(s => { const k = `${s.doc_name}-${s.page}`; if (!seen.has(k)) { seen.add(k); unique.push(s); } });
-      sourcesHtml = `<div class="msg-sources">${unique.map(s => `<span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})">${escHtml(s.doc_name)} p.${s.page}</span>`).join('')}</div>`;
+      sources.forEach(s => {
+        const k = `${s.doc_name}-${s.page}`;
+        if (!seen.has(k)) { seen.add(k); unique.push(s); }
+      });
+      sourcesHtml = `
+        <div class="msg-sources">
+          ${unique.map(s => `
+            <span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})" title="View source in document viewer">
+              📄 ${escHtml(s.doc_name)} (p.${s.page})
+            </span>
+          `).join('')}
+        </div>
+      `;
     }
 
-    const feedbackHtml = role === 'assistant' ? `<div class="msg-feedback" id="feedback-${msgDivId}"><button class="feedback-btn" onclick="rateMessage('${msgDivId}', 'up')" title="Helpful">👍</button><button class="feedback-btn" onclick="rateMessage('${msgDivId}', 'down')" title="Not helpful">👎</button></div>` : '';
+    const feedbackHtml = role === 'assistant' ? `
+      <div class="msg-feedback" id="feedback-${msgDivId}">
+        <button class="feedback-btn" onclick="copyMessageText(this, '${escHtml(text)}')" title="Copy response">📋</button>
+        <button class="feedback-btn" onclick="rateMessage('${msgDivId}', 'up')" title="Helpful">👍</button>
+        <button class="feedback-btn" onclick="rateMessage('${msgDivId}', 'down')" title="Not helpful">👎</button>
+      </div>
+    ` : '';
 
-    div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="msg-bubble">${formattedText}${sourcesHtml}</div>${feedbackHtml}</div>`;
+    div.innerHTML = `
+      <div class="msg-avatar">${avatar}</div>
+      <div class="msg-body">
+        <div class="msg-bubble">${formattedText}${sourcesHtml}</div>
+        ${feedbackHtml}
+      </div>
+    `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
   }
@@ -361,24 +481,51 @@
     div.className = 'message assistant streaming';
     const id = 'stream-' + Date.now();
     div.id = id;
-    div.innerHTML = `<div class="msg-avatar">AI</div><div class="msg-body"><div class="msg-bubble" id="bubble-${id}"></div><div class="msg-sources" id="sources-${id}"></div><div class="msg-feedback" id="feedback-${id}"></div></div>`;
+    div.innerHTML = `
+      <div class="msg-avatar">AI</div>
+      <div class="msg-body">
+        <div class="msg-bubble" id="bubble-${id}"></div>
+        <div class="msg-sources" id="sources-${id}"></div>
+        <div class="msg-feedback" id="feedback-${id}"></div>
+      </div>
+    `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
     return id;
   }
 
-  function renderSources(msgId, sources) {
+  function renderSources(msgId, sources, fullText) {
     const el = document.getElementById(`sources-${msgId}`);
-    if (!el || !sources.length) return;
-    const unique = []; const seen = new Set();
-    sources.forEach(s => { const k = `${s.doc_name}-${s.page}`; if (!seen.has(k)) { seen.add(k); unique.push(s); } });
-    el.innerHTML = unique.map(s => `<span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})">${escHtml(s.doc_name)} p.${s.page}</span>`).join('');
-    // Add feedback after streaming
+    if (el && sources && sources.length) {
+      const unique = []; const seen = new Set();
+      sources.forEach(s => {
+        const k = `${s.doc_name}-${s.page}`;
+        if (!seen.has(k)) { seen.add(k); unique.push(s); }
+      });
+      el.innerHTML = unique.map(s => `
+        <span class="source-chip" onclick="viewSource('${s.doc_id}', ${s.page})" title="View in document viewer">
+          📄 ${escHtml(s.doc_name)} (p.${s.page})
+        </span>
+      `).join('');
+    }
+
     const fbEl = document.getElementById(`feedback-${msgId}`);
-    if (fbEl) fbEl.innerHTML = `<button class="feedback-btn" onclick="rateMessage('${msgId}', 'up')" title="Helpful">👍</button><button class="feedback-btn" onclick="rateMessage('${msgId}', 'down')" title="Not helpful">👎</button>`;
+    if (fbEl) {
+      fbEl.innerHTML = `
+        <button class="feedback-btn" onclick="copyMessageText(this, \`${escHtml(fullText).replace(/`/g, '\\`')}\`)" title="Copy response">📋</button>
+        <button class="feedback-btn" onclick="rateMessage('${msgId}', 'up')" title="Helpful">👍</button>
+        <button class="feedback-btn" onclick="rateMessage('${msgId}', 'down')" title="Not helpful">👎</button>
+      `;
+    }
   }
 
-  function viewSource(docId, page) { window.open(`/viewer?doc=${docId}&page=${page}`, '_blank'); }
+  function copyMessageText(btn, rawText) {
+    copyToClipboard(rawText, 'Response copied!');
+  }
+
+  function viewSource(docId, page) {
+    window.open(`/viewer?doc=${docId}&page=${page}`, '_blank');
+  }
 
   function showTyping() {
     const id = 'typing-' + Date.now();
@@ -386,32 +533,71 @@
     const div = document.createElement('div');
     div.className = 'message assistant';
     div.id = id;
-    div.innerHTML = `<div class="msg-avatar">AI</div><div class="msg-body"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+    div.innerHTML = `
+      <div class="msg-avatar">AI</div>
+      <div class="msg-body">
+        <div class="typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+    `;
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
     return id;
   }
 
-  function removeTyping(id) { const el = document.getElementById(id); if (el) el.remove(); }
+  function removeTyping(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
 
   function clearChat() {
     chatHistory = [];
-    document.getElementById('chatMessages').innerHTML = `<div class="chat-welcome" id="chatWelcome"><div class="welcome-icon">✦</div><h2>Ask your documents</h2><p>Select documents and ask anything.</p></div>`;
+    document.getElementById('chatMessages').innerHTML = `
+      <div class="chat-welcome" id="chatWelcome">
+        <div class="welcome-icon">✦</div>
+        <h2>Chat with your Knowledge Base</h2>
+        <p>Select documents and ask anything.</p>
+      </div>
+    `;
     if (currentChatId) fetch(`/api/chats/${currentChatId}/messages`, { method: 'DELETE' }).catch(() => {});
+    showToast('Conversation cleared', 'info');
   }
 
   const textarea = document.getElementById('chatInput');
   textarea.addEventListener('input', () => autoResize(textarea));
-  textarea.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-  function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 140) + 'px'; }
+  textarea.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
 
-  function exportChat(chatId) { window.open(`/api/chats/${chatId}/export`, '_blank'); }
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  }
+
+  function exportChat(chatId) {
+    window.open(`/api/chats/${chatId}/export`, '_blank');
+  }
 
   async function rateMessage(msgDivId, rating) {
     if (!currentChatId) return;
     const fbEl = document.getElementById(`feedback-${msgDivId}`);
-    if (fbEl) { fbEl.innerHTML = rating === 'up' ? '✓ Thanks' : '✕ Noted'; fbEl.style.pointerEvents = 'none'; fbEl.style.color = 'var(--text-tertiary)'; fbEl.style.fontSize = '0.7rem'; fbEl.style.fontWeight = '500'; }
-    try { await fetchJson(`/api/chats/${currentChatId}/feedback`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: 0, rating }) }); } catch {}
+    if (fbEl) {
+      fbEl.innerHTML = rating === 'up' ? '<span style="color: var(--green); font-size: 0.75rem; font-weight: 600;">✓ Thanks</span>' : '<span style="color: var(--text-tertiary); font-size: 0.75rem;">✕ Noted</span>';
+      fbEl.style.pointerEvents = 'none';
+    }
+    try {
+      await fetchJson(`/api/chats/${currentChatId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: 0, rating })
+      });
+    } catch {}
   }
 
   async function loadPrompts() {
@@ -419,11 +605,18 @@
       const data = await fetchJson('/api/prompts');
       const list = document.getElementById('promptList');
       if (!list) return;
-      list.innerHTML = data.prompts.map(p => `<button class="prompt-item" onclick="usePrompt('${escHtml(p.prompt || p.label)}')">${escHtml(p.label)}</button>`).join('');
+      list.innerHTML = data.prompts.map(p => `
+        <button class="prompt-item" onclick="usePrompt('${escHtml(p.prompt || p.label)}')">${escHtml(p.label)}</button>
+      `).join('');
     } catch {}
   }
 
-  function usePrompt(prompt) { document.getElementById('chatInput').value = prompt; document.getElementById('chatInput').focus(); }
+  function usePrompt(prompt) {
+    const input = document.getElementById('chatInput');
+    input.value = prompt;
+    input.focus();
+    autoResize(input);
+  }
 
   init();
   loadPrompts();
