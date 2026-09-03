@@ -5,9 +5,17 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 
-SECRET_KEY = secrets.token_hex(32)
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+PROJECT_ROOT = Path(__file__).parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY") or os.getenv("SECRET_KEY") or secrets.token_hex(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
 
 
 def hash_password(password: str) -> tuple[str, str]:
