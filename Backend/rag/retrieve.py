@@ -17,6 +17,13 @@ def retrieve_chunks(query: str, doc_ids: list[str], top_k: int = TOP_K_CHUNKS) -
     all_results = []
     all_chunks_by_doc = {}
 
+    query_emb = None
+    try:
+        from rag.embeddings import embed_query
+        query_emb = embed_query(query).reshape(1, -1)
+    except Exception:
+        pass
+
     for doc_id in doc_ids:
         try:
             index_data = load_index(doc_id)
@@ -31,26 +38,22 @@ def retrieve_chunks(query: str, doc_ids: list[str], top_k: int = TOP_K_CHUNKS) -
         # TF-IDF scores
         query_vec = vectorizer.transform([query])
         tfidf_scores = cosine_similarity(query_vec, matrix).flatten()
+        tfidf_scores = np.clip(tfidf_scores, 0, 1)
 
         # Semantic scores (if embeddings exist and load successfully)
         has_semantic = False
         semantic_scores = np.zeros(len(tfidf_scores))
-        try:
-            from rag.embeddings import load_embeddings, embed_query
-            embeddings = load_embeddings(doc_id)
-            query_emb = embed_query(query).reshape(1, -1)
-            semantic_scores = cosine_similarity(query_emb, embeddings).flatten()
-            has_semantic = True
-        except Exception:
-            pass
+        if query_emb is not None:
+            try:
+                from rag.embeddings import load_embeddings
+                embeddings = load_embeddings(doc_id)
+                semantic_scores = cosine_similarity(query_emb, embeddings).flatten()
+                semantic_scores = np.clip(semantic_scores, 0, 1)
+                has_semantic = True
+            except Exception:
+                pass
 
-        # Normalize scores
-        if tfidf_scores.max() > 0:
-            tfidf_scores = tfidf_scores / tfidf_scores.max()
-        if has_semantic and semantic_scores.max() > 0:
-            semantic_scores = semantic_scores / semantic_scores.max()
-
-        # Hybrid fusion
+        # Hybrid fusion (both cosine scores are in [0, 1])
         alpha = 0.6 if has_semantic else 1.0
         hybrid_scores = alpha * tfidf_scores + (1 - alpha) * semantic_scores
 
@@ -65,6 +68,7 @@ def retrieve_chunks(query: str, doc_ids: list[str], top_k: int = TOP_K_CHUNKS) -
                 "tfidf_score": float(tfidf_scores[idx]),
                 "semantic_score": float(semantic_scores[idx]) if has_semantic else 0,
             })
+
 
     if all_results:
         all_results.sort(key=lambda x: x["score"], reverse=True)

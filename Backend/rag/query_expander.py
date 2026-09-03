@@ -28,9 +28,10 @@ Output format: ["variation 1", "variation 2", "variation 3", "variation 4"]"""
             temperature=0.7,
         )
         text = response.choices[0].message.content.strip()
-        text = text.strip("`").strip()
-        if text.startswith("json"):
-            text = text[4:].strip()
+        import re
+        match = re.search(r"\[.*\]", text, re.DOTALL)
+        if match:
+            text = match.group(0)
 
         variations = json.loads(text)
         if isinstance(variations, list) and len(variations) > 0:
@@ -46,3 +47,4 @@ Output format: ["variation 1", "variation 2", "variation 3", "variation 4"]"""
         pass
 
     return [query]
+
