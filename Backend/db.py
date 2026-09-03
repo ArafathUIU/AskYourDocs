@@ -73,13 +73,30 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
-    # Add ingestion_status column if missing (safe migration)
     try:
         conn.execute("ALTER TABLE documents ADD COLUMN ingestion_status TEXT DEFAULT 'ready'")
     except sqlite3.OperationalError:
         pass
     conn.commit()
+
+    # Auto-sync any existing documents from _registry.json into SQLite
+    try:
+        from config import STORAGE_DIR
+        registry_path = STORAGE_DIR / "docs" / "_registry.json"
+        if registry_path.exists():
+            with open(registry_path, "r", encoding="utf-8") as f:
+                registry = json.load(f)
+            for doc_id, meta in registry.items():
+                conn.execute(
+                    "INSERT OR IGNORE INTO documents (doc_id, name, chunk_count, page_count, title, ingestion_status) VALUES (?, ?, ?, ?, ?, 'ready')",
+                    (doc_id, meta.get("name", doc_id), meta.get("chunk_count", 0), meta.get("page_count", 1), meta.get("title", ""))
+                )
+            conn.commit()
+    except Exception:
+        pass
+
     conn.close()
+
 
 
 # ── Document operations ──

@@ -27,10 +27,12 @@ LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
 
 
 
-CHUNK_SIZE = 800
-CHUNK_OVERLAP = 150
-TOP_K_CHUNKS = 6
+CHUNK_SIZE = 350
+CHUNK_OVERLAP = 60
+TOP_K_CHUNKS = 4
 MAX_TOKENS = 2048
+
+
 
 # Default to instant, zero-latency TF-IDF search; enable heavy PyTorch/HF models only if ENABLE_ML=1
 ENABLE_ML = os.getenv("ENABLE_ML", "0") == "1"
