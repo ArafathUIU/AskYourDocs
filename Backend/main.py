@@ -270,13 +270,11 @@ async def clear_chat_messages(chat_id: str):
 async def list_models():
     return {
         "models": [
-            {"id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro", "provider": "OpenCode Go"},
-            {"id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash", "provider": "OpenCode Go"},
-            {"id": "qwen3.7-plus", "name": "Qwen 3.7 Plus", "provider": "OpenCode Go"},
-            {"id": "qwen3.7-max", "name": "Qwen 3.7 Max", "provider": "OpenCode Go"},
-            {"id": "kimi-k2.6", "name": "Kimi K2.6", "provider": "OpenCode Go"},
-            {"id": "mimo-v2.5", "name": "MiMo V2.5", "provider": "OpenCode Go"},
-            {"id": "glm-5.1", "name": "GLM 5.1", "provider": "OpenCode Go"},
+            {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "provider": "Groq"},
+            {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "provider": "Groq"},
+            {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B", "provider": "Groq"},
+            {"id": "gemma2-9b-it", "name": "Gemma 2 9B", "provider": "Groq"},
+            {"id": "deepseek-r1-distill-llama-70b", "name": "DeepSeek R1 Distill 70B", "provider": "Groq"},
         ]
     }
 
@@ -300,6 +298,7 @@ async def chat(request: ChatRequest):
         doc_ids=request.doc_ids,
         doc_names=doc_names,
         chat_history=request.chat_history,
+        model=request.model,
     )
 
     return result
@@ -319,9 +318,9 @@ async def chat_stream(request: ChatRequest):
 
     doc_names = {doc_id: docs[doc_id]["name"] for doc_id in request.doc_ids}
 
-    from rag.retrieve import retrieve_chunks
+    from rag.pipeline import process_pipeline_chunks
 
-    chunks = retrieve_chunks(request.query, request.doc_ids)
+    chunks, _ = process_pipeline_chunks(request.query, request.doc_ids)
 
     if not chunks:
         async def empty_stream():
@@ -356,6 +355,7 @@ async def chat_stream(request: ChatRequest):
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(token_stream(), media_type="text/event-stream")
+
 
 
 # ── Collection Routes ────────────────────────────────────────────────────────
