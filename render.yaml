@@ -7,9 +7,16 @@ services:
     startCommand: cd Backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     plan: free
     envVars:
-      - key: OPENCODE_API_KEY
+      - key: GROQ_API_KEY
         sync: false
+      - key: GROQ_BASE_URL
+        value: "https://api.groq.com/openai/v1"
+      - key: LLM_MODEL
+        value: "openai/gpt-oss-20b"
+      - key: ENABLE_ML
+        value: "0"
       - key: RENDER
         value: "1"
       - key: PYTHON_VERSION
         value: "3.12.10"
+

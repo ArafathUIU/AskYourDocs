@@ -7,10 +7,11 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 # Auto-detect: Vercel, Render, and other cloud platforms use /tmp
 # Local uses Backend directory
-if os.getenv("VERCEL") or os.getenv("VERCEL_ENV") or os.getenv("RENDER"):
+if os.getenv("VERCEL") or os.getenv("VERCEL_ENV"):
     BASE_DIR = Path("/tmp")
 else:
     BASE_DIR = Path(__file__).parent
+
 
 STORAGE_DIR = BASE_DIR / "storage"
 DOCS_DIR = STORAGE_DIR / "docs"
