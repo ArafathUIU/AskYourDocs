@@ -21,7 +21,8 @@ def test_list_models():
     assert r.status_code == 200
     models = r.json()["models"]
     assert len(models) > 0
-    assert any(m["id"] == "llama-3.3-70b-versatile" for m in models)
+    assert any(m["id"] == "openai/gpt-oss-20b" for m in models)
+
     assert all(m["provider"] == "Groq" for m in models)
 
 

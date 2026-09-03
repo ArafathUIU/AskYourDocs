@@ -270,13 +270,15 @@ async def clear_chat_messages(chat_id: str):
 async def list_models():
     return {
         "models": [
-            {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "provider": "Groq"},
-            {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "provider": "Groq"},
-            {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B", "provider": "Groq"},
-            {"id": "gemma2-9b-it", "name": "Gemma 2 9B", "provider": "Groq"},
-            {"id": "deepseek-r1-distill-llama-70b", "name": "DeepSeek R1 Distill 70B", "provider": "Groq"},
+            {"id": "openai/gpt-oss-20b", "name": "GPT-OSS 20B", "provider": "Groq"},
+            {"id": "openai/gpt-oss-120b", "name": "GPT-OSS 120B", "provider": "Groq"},
+            {"id": "qwen/qwen3.6-27b", "name": "Qwen 3.6 27B", "provider": "Groq"},
+            {"id": "qwen/qwen3.8-27b", "name": "Qwen 3.8 27B", "provider": "Groq"},
+            {"id": "groq/compound", "name": "Groq Compound", "provider": "Groq"},
+            {"id": "groq/compound-mini", "name": "Groq Compound Mini", "provider": "Groq"},
         ]
     }
+
 
 
 @app.post("/api/chat")

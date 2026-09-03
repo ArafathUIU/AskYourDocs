@@ -23,7 +23,8 @@ for d in [DOCS_DIR, INDEXES_DIR, TEXTS_DIR]:
 # API key & provider
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENCODE_API_KEY", "")
 GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
+
 
 
 CHUNK_SIZE = 800
