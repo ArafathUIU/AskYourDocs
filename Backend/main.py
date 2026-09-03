@@ -300,12 +300,20 @@ async def chat(request: ChatRequest):
     if not request.doc_ids:
         raise HTTPException(400, "Select at least one document.")
 
+    from config import GROQ_API_KEY
+    if not GROQ_API_KEY or GROQ_API_KEY == "gsk_placeholder":
+        raise HTTPException(
+            500,
+            "GROQ_API_KEY is not configured on Render. Please add GROQ_API_KEY to your Render Dashboard -> Environment Variables."
+        )
+
     docs = {d["doc_id"]: d for d in get_all_documents()}
     for doc_id in request.doc_ids:
         if doc_id not in docs:
             raise HTTPException(404, f"Document {doc_id} not found.")
 
     doc_names = {doc_id: docs[doc_id]["name"] for doc_id in request.doc_ids}
+
 
     result = run_rag_pipeline(
         query=request.query,
@@ -325,12 +333,20 @@ async def chat_stream(request: ChatRequest):
     if not request.doc_ids:
         raise HTTPException(400, "Select at least one document.")
 
+    from config import GROQ_API_KEY
+    if not GROQ_API_KEY or GROQ_API_KEY == "gsk_placeholder":
+        raise HTTPException(
+            500,
+            "GROQ_API_KEY is not configured on Render. Please add GROQ_API_KEY to your Render Dashboard -> Environment Variables."
+        )
+
     docs = {d["doc_id"]: d for d in get_all_documents()}
     for doc_id in request.doc_ids:
         if doc_id not in docs:
             raise HTTPException(404, f"Document {doc_id} not found.")
 
     doc_names = {doc_id: docs[doc_id]["name"] for doc_id in request.doc_ids}
+
 
     from rag.retrieve import retrieve_chunks
 
